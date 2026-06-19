@@ -6,160 +6,105 @@
 @import 'heroui-native/styles';
 
 /*
- * HeroUI Native + Uniwind tokens
- *
- * Component variants compile to Tailwind utilities (e.g. Button primary → bg-accent,
- * Button secondary → bg-default, Alert → text-foreground). Those classes only work when
- * the matching Tailwind color tokens exist.
- *
- * heroui-native/styles/theme.css maps semantic tokens to --color-* utilities.
- * Uncomment the HeroUI default theme block below to override.
- *
- * Docs: https://docs.uniwind.dev/theming/global-css
- *       https://heroui.com/docs/native/getting-started/colors
+ * chakraOS — "clinical mysticism" dark theme.
+ * Deep navy-black instrument chrome with per-surface accents and nine node colors.
  */
 
-/*
 @layer base {
-  HeroUI Default Theme
   :root {
-    color-scheme: light;
+    color-scheme: dark;
 
-    == Common Variables ==
-
-    Primitive Colors (Do not change between light and dark)
-    --white: oklch(100% 0 0);
-    --black: oklch(0% 0 0);
-    --snow: oklch(0.9911 0 0);
-    --eclipse: oklch(0.2103 0.0059 285.89);
-
-    Spacing scale
     --spacing: 0.25rem;
-
-    Border
     --border-width: 1px;
     --field-border-width: 0px;
     --disabled-opacity: 0.5;
-
-    Ring offset - Used for focus ring
     --ring-offset-width: 2px;
+    --radius: 0.75rem;
+    --field-radius: calc(var(--radius) * 1.25);
 
-    Cursor
-    --cursor-interactive: pointer;
-    --cursor-disabled: not-allowed;
+    /* Surface system */
+    --background: oklch(0.16 0.02 265);
+    --foreground: oklch(0.93 0.012 270);
 
-    Radius
-    --radius: 0.5rem;
-    --field-radius: calc(var(--radius) * 1.5);
-
-    == Light Theme Variables ==
-
-    Base Colors
-    --background: oklch(0.9702 0 0);
-    --foreground: var(--eclipse);
-
-    Surface
-    --surface: var(--white);
+    --surface: oklch(0.2 0.022 265);
     --surface-foreground: var(--foreground);
 
-    Overlay
-    --overlay: var(--white);
+    --overlay: oklch(0.2 0.022 265);
     --overlay-foreground: var(--foreground);
 
-    --muted: oklch(0.5517 0.0138 285.94);
-    --scrollbar: oklch(87.1% 0.006 286.286);
+    --muted: oklch(0.66 0.02 270);
+    --scrollbar: oklch(0.3 0.02 265);
 
-    --default: oklch(94% 0.001 286.375);
-    --default-foreground: var(--eclipse);
+    --default: oklch(0.26 0.02 265);
+    --default-foreground: var(--foreground);
 
-    --accent: oklch(0.6204 0.195 253.83);
-    --accent-foreground: var(--snow);
+    /* Brand accent = Body cyan */
+    --accent: oklch(0.78 0.13 205);
+    --accent-foreground: oklch(0.16 0.02 265);
 
-    Form Field Defaults - Colors
-    --field-background: var(--white);
-    --field-foreground: oklch(0.2103 0.0059 285.89);
+    --field-background: oklch(0.22 0.02 265);
+    --field-foreground: var(--foreground);
     --field-placeholder: var(--muted);
     --field-border: transparent;
 
-    Status Colors
-    --success: oklch(0.7329 0.1935 150.81);
-    --success-foreground: var(--eclipse);
+    --success: oklch(0.78 0.16 160);
+    --success-foreground: oklch(0.16 0.02 265);
+    --warning: oklch(0.82 0.14 76);
+    --warning-foreground: oklch(0.16 0.02 265);
+    --danger: oklch(0.66 0.21 18);
+    --danger-foreground: oklch(0.96 0 0);
 
-    --warning: oklch(0.7819 0.1585 72.33);
-    --warning-foreground: var(--eclipse);
-
-    --danger: oklch(0.6532 0.2328 25.74);
-    --danger-foreground: var(--snow);
-
-    Component Colors
-    --segment: var(--white);
-    --segment-foreground: var(--eclipse);
-
-    Misc Colors
-    --border: oklch(92% 0.004 286.32);
-    --separator: oklch(92% 0.004 286.32);
-    --focus: var(--accent);
-    --link: var(--foreground);
-
-    Backdrop
-    --backdrop: rgba(0, 0, 0, 0.5);
-
-    Shadows
-    --surface-shadow:
-      0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06),
-      0 0 1px 0 rgba(0, 0, 0, 0.06);
-    --overlay-shadow: 0 4px 16px 0 rgba(24, 24, 27, 0.08), 0 8px 24px 0 rgba(24, 24, 27, 0.09);
-    --field-shadow:
-      0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06),
-      0 0 1px 0 rgba(0, 0, 0, 0.06);
-    --skeleton-animation: shimmer;
-  }
-
-  .dark,
-  [data-theme="dark"] {
-    color-scheme: dark;
-    == Dark Theme Variables ==
-
-    Base Colors
-    --background: oklch(12% 0.005 285.823);
-    --foreground: var(--snow);
-
-    --surface: oklch(0.2103 0.0059 285.89);
-    --surface-foreground: var(--foreground);
-
-    --overlay: oklch(0.22 0.0059 285.89);
-    --overlay-foreground: var(--foreground);
-
-    --muted: oklch(70.5% 0.015 286.067);
-    --scrollbar: oklch(70.5% 0.015 286.067);
-
-    --default: oklch(27.4% 0.006 286.033);
-    --default-foreground: var(--snow);
-
-    --field-background: var(--default);
-    --field-foreground: var(--foreground);
-
-    --warning: oklch(0.8203 0.1388 76.34);
-    --warning-foreground: var(--eclipse);
-
-    --danger: oklch(0.594 0.1967 24.63);
-    --danger-foreground: var(--snow);
-
-    --segment: oklch(0.3964 0.01 285.93);
+    --segment: oklch(0.24 0.02 265);
     --segment-foreground: var(--foreground);
 
-    --border: oklch(22% 0.006 286.033);
-    --separator: oklch(22% 0.006 286.033);
+    --border: oklch(0.28 0.02 265);
+    --separator: oklch(0.28 0.02 265);
     --focus: var(--accent);
     --link: var(--foreground);
 
-    --backdrop: rgba(0, 0, 0, 0.6);
+    --backdrop: rgba(4, 6, 12, 0.7);
 
-    --surface-shadow: 0 0 0 0 transparent inset;
-    --overlay-shadow: 0 0 0 0 transparent inset;
-    --field-shadow: 0 0 0 0 transparent inset;
+    --surface-shadow: 0 0 0 0 transparent;
+    --overlay-shadow: 0 0 0 0 transparent;
+    --field-shadow: 0 0 0 0 transparent;
+    --skeleton-animation: shimmer;
   }
 }
-*/
+
+/*
+ * Custom --color-* utilities. These create bg-[x], text-[x], border-[x] classes.
+ * Surface palette + per-surface accents + the nine node colors.
+ */
+@theme {
+  --color-field: #0a0e18;
+  --color-panel: #111726;
+  --color-panel-2: #0e1420;
+  --color-line: #1e2535;
+  --color-ink: #e9ecf5;
+  --color-mute: #8a90a6;
+  --color-faint: #565c72;
+
+  --color-body: #36d6e7;
+  --color-journal: #e8b23d;
+  --color-coach: #3ddc97;
+  --color-sound: #a56bff;
+  --color-you: #ff5ca8;
+
+  --color-node-soul: #eaf0ff;
+  --color-node-crown: #b14dff;
+  --color-node-third: #6b6bff;
+  --color-node-throat: #3db6ff;
+  --color-node-heart: #36f5a6;
+  --color-node-solar: #ffd23d;
+  --color-node-sacral: #ff8a3d;
+  --color-node-root: #ff4d5e;
+  --color-node-earth: #c0433a;
+
+  --font-display: 'Outfit_600SemiBold';
+  --font-display-bold: 'Outfit_700Bold';
+  --font-mono: 'JetBrainsMono_500Medium';
+  --font-mono-bold: 'JetBrainsMono_700Bold';
+  --font-voice: 'Lora_400Regular_Italic';
+}
 
 @source './node_modules/heroui-native/lib';

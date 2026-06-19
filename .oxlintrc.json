@@ -61,6 +61,7 @@
     ".expo",
     "node_modules",
     "android/app/build",
+    "supabase",
     "uniwind-types.d.ts"
   ],
   "overrides": [

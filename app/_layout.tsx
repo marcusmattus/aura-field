@@ -9,6 +9,13 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
+import { Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_700Bold,
+} from '@expo-google-fonts/jetbrains-mono';
+import { Lora_400Regular_Italic, Lora_500Medium_Italic } from '@expo-google-fonts/lora';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { useEffect } from 'react';
@@ -41,8 +48,8 @@ function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 
 export { ErrorBoundary };
 
-// Starter is light-only by default. Remove this when implementing requested dark mode.
-Uniwind.setTheme('light');
+// chakraOS is dark-only (clinical mysticism).
+Uniwind.setTheme('dark');
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -52,6 +59,14 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+    JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
+    JetBrainsMono_700Bold,
+    Lora_400Regular_Italic,
+    Lora_500Medium_Italic,
   });
 
   // Report uncaught JS errors and unhandled promise rejections to parent (Bilt preview iframe)
@@ -135,8 +150,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <HeroUINativeProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ title: 'Habits', headerShown: false }} />
+        <Stack screenOptions={{ contentStyle: { backgroundColor: '#0a0e18' } }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="inspector/[chakra]"
+            options={{ presentation: 'modal', headerShown: false }}
+          />
+          <Stack.Screen name="session" options={{ presentation: 'modal', headerShown: false }} />
         </Stack>
       </HeroUINativeProvider>
     </GestureHandlerRootView>

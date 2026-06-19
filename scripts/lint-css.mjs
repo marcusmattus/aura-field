@@ -12,23 +12,23 @@ import { globSync, readFileSync } from 'node:fs';
 // bug that breaks the build, so it would miss the very error this guards against.
 let failed = false;
 const report = (msg) => {
-    failed = true;
-    console.error(msg);
+  failed = true;
+  console.error(msg);
 };
 
 for (const file of globSync('**/*.css', { exclude: ['**/node_modules/**'] })) {
-    const code = readFileSync(file);
+  const code = readFileSync(file);
 
-    try {
-        transform({ code, filename: file });
-    } catch (e) {
-        report(`${file}:${e.loc?.line ?? '?'}:${e.loc?.column ?? '?'}  [build]  ${e.message}`);
-    }
+  try {
+    transform({ code, filename: file });
+  } catch (e) {
+    report(`${file}:${e.loc?.line ?? '?'}:${e.loc?.column ?? '?'}  [build]  ${e.message}`);
+  }
 
-    cssTree.parse(code.toString(), {
-        positions: true,
-        onParseError: (e) => report(`${file}:${e.line}:${e.column}  [syntax] ${e.message}`),
-    });
+  cssTree.parse(code.toString(), {
+    positions: true,
+    onParseError: (e) => report(`${file}:${e.line}:${e.column}  [syntax] ${e.message}`),
+  });
 }
 
 process.exit(failed ? 1 : 0);
