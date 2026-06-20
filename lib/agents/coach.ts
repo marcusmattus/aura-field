@@ -91,19 +91,10 @@ export function suggestSession(states: ChakraState[]): SoundSession {
 }
 
 function bandForChakra(key: ChakraKey): string {
-  // lower nodes → deeper bands
-  const map: Record<ChakraKey, string> = {
-    soul: 'binaural beat 4 Hz · theta',
-    crown: 'binaural beat 6 Hz · theta',
-    third: 'binaural beat 8 Hz · alpha',
-    throat: 'binaural beat 10 Hz · alpha',
-    heart: 'binaural beat 10 Hz · alpha',
-    solar: 'binaural beat 12 Hz · alpha',
-    sacral: 'binaural beat 7 Hz · theta',
-    root: 'binaural beat 6 Hz · theta',
-    earth: 'binaural beat 4 Hz · delta',
-  };
-  return map[key];
+  // Derived from the canonical node data so the binaural offset + band stay in
+  // one place (lib/chakras.ts). Format kept stable: "binaural beat N Hz · band".
+  const chakra = CHAKRA_BY_KEY[key];
+  return `binaural beat ${chakra.binauralOffsetHz} Hz · ${chakra.brainwaveBand}`;
 }
 
 /** Build a sound session object for a specific node + hz (e.g. Inspector launch). */

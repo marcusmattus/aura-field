@@ -18,6 +18,12 @@ export interface Chakra {
   name: string;
   bija: string;
   solfeggioHz: number;
+  /** Western pitch nearest the solfeggio carrier (equal temperament, A440) */
+  noteName: string;
+  /** binaural beat offset in Hz applied between ears during a session */
+  binauralOffsetHz: number;
+  /** target brainwave band the offset entrains, e.g. "alpha" */
+  brainwaveBand: string;
   /** hex color */
   color: string;
   sign: string;

@@ -34,7 +34,7 @@ export default function InspectorScreen() {
           <View className="flex-row items-start justify-between">
             <Mono style={{ color: def.color }}>
               {def.name.split(' ')[0].toUpperCase()} · {def.bija.toUpperCase()} · {def.solfeggioHz}{' '}
-              HZ
+              HZ · {def.noteName}
             </Mono>
             <Pressable onPress={() => router.back()} hitSlop={12}>
               <X color="#8a90a6" size={20} />

@@ -89,7 +89,7 @@ export default function SoundScreen() {
                     {c.name} Restoration
                   </Text>
                   <Text className="text-faint font-mono" style={{ fontSize: 10 }}>
-                    {c.solfeggioHz} HZ · {c.bija.toUpperCase()}
+                    {c.solfeggioHz} HZ · {c.noteName} · {c.bija.toUpperCase()}
                   </Text>
                 </View>
                 <Play color={c.color} size={15} />
