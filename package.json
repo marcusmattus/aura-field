@@ -30,6 +30,7 @@
     "clsx": "~2.1.1",
     "date-fns": "^4.4.0",
     "expo": "~54.0.34",
+    "expo-audio": "~1.1.1",
     "expo-av": "~16.0.8",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",

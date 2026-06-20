@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Mic, Send, Waves, Wind, X } from 'lucide-react-native';
+import { PenLine, Send, Waves, Wind } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Text } from 'heroui-native';
 
-import { Display, Mono, Panel } from '@/components/ui';
+import { Display, FadeIn, Mono, Panel } from '@/components/ui';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
 import type { CoachMessage, Protocol } from '@/lib/types';
@@ -77,8 +77,10 @@ export default function CoachScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} onProtocol={onProtocol} />
+        {messages.map((m, i) => (
+          <FadeIn key={m.id} index={i === messages.length - 1 ? 0 : 0}>
+            <MessageBubble message={m} onProtocol={onProtocol} />
+          </FadeIn>
         ))}
       </ScrollView>
 
@@ -93,9 +95,6 @@ export default function CoachScreen() {
             style={{ fontFamily: 'Inter_400Regular', fontSize: 14, paddingVertical: 8 }}
             onSubmitEditing={submit}
           />
-          <Pressable className="h-8 w-8 items-center justify-center">
-            <Mic color="#565c72" size={16} />
-          </Pressable>
           <Pressable
             onPress={submit}
             disabled={!text.trim()}
@@ -159,7 +158,7 @@ function MessageBubble({
 }
 
 function ProtocolCard({ protocol, onPress }: { protocol: Protocol; onPress: () => void }) {
-  const Icon = protocol.type === 'sound' ? Waves : protocol.type === 'breath' ? Wind : X;
+  const Icon = protocol.type === 'sound' ? Waves : protocol.type === 'breath' ? Wind : PenLine;
   const color =
     protocol.type === 'sound'
       ? SURFACE_ACCENT.sound

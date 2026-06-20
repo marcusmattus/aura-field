@@ -6,6 +6,7 @@ import { Text } from 'heroui-native';
 
 import { SoundVisualizer } from '@/components/SoundVisualizer';
 import { Chip, Display, Mono } from '@/components/ui';
+import { useToneSession } from '@/hooks/useToneSession';
 import { sessionForChakra } from '@/lib/agents/coach';
 import { CHAKRA_BY_KEY, SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
@@ -36,6 +37,13 @@ export default function SessionScreen() {
   const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(true);
   const completedRef = useRef(false);
+
+  // Breath sessions are silent (paced breathing); sound sessions play the tone.
+  useToneSession({
+    carrierHz: session.hz,
+    band: session.brainwaveBand,
+    playing: playing && !isBreath,
+  });
 
   useEffect(() => {
     if (!playing) return undefined;
@@ -85,7 +93,7 @@ export default function SessionScreen() {
           playing={playing && !done}
         />
         <Display size={26} className="mt-6">
-          {session.hz} Hz · low drone
+          {session.hz} Hz · {def.name.toLowerCase()} carrier
         </Display>
         <Text className="text-mute mt-1 font-mono" style={{ fontSize: 12 }}>
           {session.brainwaveBand} · {Math.round(session.durationS / 60)} min

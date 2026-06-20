@@ -7,7 +7,7 @@ import { Text } from 'heroui-native';
 
 import { AuraSigil } from '@/components/AuraSigil';
 import { BodyField } from '@/components/BodyField';
-import { Chip, Display, Mono, Panel } from '@/components/ui';
+import { Chip, Display, Mono, Panel, SoftFade } from '@/components/ui';
 import { todaysObservation } from '@/lib/agents/oracle';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
@@ -67,28 +67,30 @@ export default function BodyScreen() {
       </View>
 
       <View className="mt-2 px-4">
-        <Panel className="p-4">
-          <View className="flex-row items-center gap-2">
-            <Sparkles color={SURFACE_ACCENT.body} size={14} />
-            <Mono className="text-body">TODAY&apos;S OBSERVATION</Mono>
-          </View>
-          <Text
-            className="text-ink mt-2"
-            style={{ fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 21 }}
-          >
-            {observation.text}
-          </Text>
-          <View className="mt-3 flex-row flex-wrap gap-2">
-            {observation.chips.map((chip) => (
-              <Pressable key={chip.label} onPress={() => onChip(chip)}>
-                <Chip
-                  label={chip.label}
-                  color={chip.surface === 'sound' ? SURFACE_ACCENT.sound : SURFACE_ACCENT.coach}
-                />
-              </Pressable>
-            ))}
-          </View>
-        </Panel>
+        <SoftFade>
+          <Panel className="p-4">
+            <View className="flex-row items-center gap-2">
+              <Sparkles color={SURFACE_ACCENT.body} size={14} />
+              <Mono className="text-body">TODAY&apos;S OBSERVATION</Mono>
+            </View>
+            <Text
+              className="text-ink mt-2"
+              style={{ fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 21 }}
+            >
+              {observation.text}
+            </Text>
+            <View className="mt-3 flex-row flex-wrap gap-2">
+              {observation.chips.map((chip) => (
+                <Pressable key={chip.label} onPress={() => onChip(chip)}>
+                  <Chip
+                    label={chip.label}
+                    color={chip.surface === 'sound' ? SURFACE_ACCENT.sound : SURFACE_ACCENT.coach}
+                  />
+                </Pressable>
+              ))}
+            </View>
+          </Panel>
+        </SoftFade>
       </View>
 
       <View className="mt-4 px-4">

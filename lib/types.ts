@@ -55,6 +55,10 @@ export interface JournalEntry {
   themes: string[];
   /** chakra this entry was pre-seeded to, if any */
   seededChakra?: ChakraKey;
+  /** local file URI of the recorded voice note, if modality is voice */
+  voiceUrl?: string;
+  /** recorded length in seconds, if a voice note was captured */
+  voiceDurationS?: number;
 }
 
 export interface CoachMessage {

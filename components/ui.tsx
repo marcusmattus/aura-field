@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react';
 import { Text, View, type ViewProps } from 'react-native';
+import Animated, { FadeIn as RNFadeIn, FadeInDown } from 'react-native-reanimated';
 
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/utils';
 
 /** A mono uppercase eyebrow / telemetry label. */
@@ -100,5 +102,44 @@ export function Chip({
         {label.toUpperCase()}
       </Text>
     </View>
+  );
+}
+
+/**
+ * Subtle entrance for a card or row. Quiet fade + slight rise, staggered by
+ * `index`. Renders statically (no animation) when reduce-motion is on.
+ */
+export function FadeIn({
+  children,
+  index = 0,
+  style,
+}: {
+  children: ReactNode;
+  index?: number;
+  style?: ViewProps['style'];
+}) {
+  const reduced = useReducedMotion();
+  if (reduced) return <View style={style}>{children}</View>;
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(Math.min(index, 8) * 55)
+        .duration(260)
+        .springify()
+        .damping(18)}
+      style={style}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** Gentle opacity-only fade for hero elements. Static under reduce-motion. */
+export function SoftFade({ children, style }: { children: ReactNode; style?: ViewProps['style'] }) {
+  const reduced = useReducedMotion();
+  if (reduced) return <View style={style}>{children}</View>;
+  return (
+    <Animated.View entering={RNFadeIn.duration(420)} style={style}>
+      {children}
+    </Animated.View>
   );
 }

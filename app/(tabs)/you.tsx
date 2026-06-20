@@ -5,7 +5,7 @@ import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
 
 import { AuraSigil } from '@/components/AuraSigil';
-import { Mono, Panel, Voice } from '@/components/ui';
+import { FadeIn, Mono, Panel, SoftFade, Voice } from '@/components/ui';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
 
@@ -49,10 +49,12 @@ export default function YouScreen() {
       </View>
 
       <View className="mt-4 items-center">
-        <Panel className="items-center py-6" style={{ width: width - 32 }}>
-          <Mono className="mb-2">AURA SIGIL</Mono>
-          <AuraSigil states={states} size={Math.min(width - 120, 240)} />
-        </Panel>
+        <SoftFade style={{ width: width - 32 }}>
+          <Panel className="items-center py-6">
+            <Mono className="mb-2">AURA SIGIL</Mono>
+            <AuraSigil states={states} size={Math.min(width - 120, 240)} />
+          </Panel>
+        </SoftFade>
       </View>
 
       <View className="mt-4 flex-row gap-3 px-4">
@@ -95,19 +97,21 @@ export default function YouScreen() {
               </Text>
             </Panel>
           ) : (
-            breakthroughs.map((b) => (
-              <Panel key={b.id} className="flex-row items-center gap-3 p-3">
-                <View className="h-2 w-2 rounded-full" style={{ backgroundColor: ACCENT }} />
-                <Mono className="w-16">
-                  {format(new Date(b.occurredAt), 'd MMM').toUpperCase()}
-                </Mono>
-                <Text
-                  className="text-ink flex-1"
-                  style={{ fontFamily: 'Inter_400Regular', fontSize: 13 }}
-                >
-                  {b.label}
-                </Text>
-              </Panel>
+            breakthroughs.map((b, i) => (
+              <FadeIn key={b.id} index={i}>
+                <Panel className="flex-row items-center gap-3 p-3">
+                  <View className="h-2 w-2 rounded-full" style={{ backgroundColor: ACCENT }} />
+                  <Mono className="w-16">
+                    {format(new Date(b.occurredAt), 'd MMM').toUpperCase()}
+                  </Mono>
+                  <Text
+                    className="text-ink flex-1"
+                    style={{ fontFamily: 'Inter_400Regular', fontSize: 13 }}
+                  >
+                    {b.label}
+                  </Text>
+                </Panel>
+              </FadeIn>
             ))
           )}
         </View>

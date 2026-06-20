@@ -21,7 +21,7 @@ export const GUARDRAILS = `chakraOS is a REFLECTIVE self-noticing tool. It is NO
 - If the user expresses serious distress, self-harm, or crisis, STOP coaching. Respond only with warmth and a hand-off to real human support (e.g. in the US, call or text 988). Set crisis=true.
 - Frame bija/solfeggio/"harmonics" as ritual and framing, not scientific fact.`;
 
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-4-5';
 
 /**
  * Call Anthropic Messages API and return the text content, or null on any

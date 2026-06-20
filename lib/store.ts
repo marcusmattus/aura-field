@@ -46,7 +46,11 @@ interface ChakraOSState {
   intention: Intention;
 
   // actions
-  addEntry: (body: string, modality: Modality, seededChakra?: ChakraKey) => Promise<void>;
+  addEntry: (
+    body: string,
+    modality: Modality,
+    opts?: { seededChakra?: ChakraKey; voiceUrl?: string; voiceDurationS?: number },
+  ) => Promise<void>;
   recompute: () => void;
   sendCoachMessage: (text: string) => Promise<void>;
   completeSession: (s: {
@@ -150,7 +154,8 @@ export const useChakraStore = create<ChakraOSState>()(
         }));
       },
 
-      addEntry: async (body, modality, seededChakra) => {
+      addEntry: async (body, modality, opts) => {
+        const seededChakra = opts?.seededChakra;
         const now = Date.now();
         // optimistic local analysis
         let analysis = analyzeEntry(body, modality, seededChakra);
@@ -162,6 +167,8 @@ export const useChakraStore = create<ChakraOSState>()(
           tags: analysis.tags,
           themes: analysis.themes,
           seededChakra,
+          voiceUrl: opts?.voiceUrl,
+          voiceDurationS: opts?.voiceDurationS,
         };
 
         // streak: increment if first entry of a new day
