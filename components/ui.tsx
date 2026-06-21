@@ -1,11 +1,25 @@
 import { type ReactNode } from 'react';
-import { Pressable, Text, View, type ViewProps } from 'react-native';
+import { Image, Pressable, Text, View, type ViewProps } from 'react-native';
 import Animated, { FadeIn as RNFadeIn, FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Lock } from 'lucide-react-native';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/utils';
+
+/** The full chakraOS brand lockup (figure + wordmark + tagline) on its native
+ * black field. Width-driven; the artwork is square. */
+export function Logo({ width = 240, className }: { width?: number; className?: string }) {
+  return (
+    <Image
+      source={require('@/assets/logo.png')}
+      style={{ width, height: width }}
+      resizeMode="contain"
+      className={className}
+      accessibilityLabel="chakraOS"
+    />
+  );
+}
 
 /** A mono uppercase eyebrow / telemetry label. */
 export function Mono({

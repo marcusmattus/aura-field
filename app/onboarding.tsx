@@ -12,9 +12,8 @@ import {
 } from 'react-native';
 import { Text } from 'heroui-native';
 
-import { AuraSigil } from '@/components/AuraSigil';
-import { Display, Mono, SoftFade } from '@/components/ui';
-import { CHAKRA_ORDER, SURFACE_ACCENT } from '@/lib/chakras';
+import { Display, Logo, Mono, SoftFade } from '@/components/ui';
+import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
 
 interface Slide {
@@ -44,12 +43,6 @@ const SLIDES: Slide[] = [
     accent: SURFACE_ACCENT.sound,
   },
 ];
-
-const PREVIEW_STATES = CHAKRA_ORDER.map((key, i) => ({
-  key,
-  energy: 38 + ((i * 53) % 60),
-  trend7d: 0,
-}));
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -95,7 +88,7 @@ export default function OnboardingScreen() {
 
       <View className="items-center py-6">
         <SoftFade>
-          <AuraSigil states={PREVIEW_STATES} size={sigilSize} />
+          <Logo width={sigilSize} />
         </SoftFade>
       </View>
 
