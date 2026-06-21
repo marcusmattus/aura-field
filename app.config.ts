@@ -17,11 +17,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     scheme: 'aura-field',
+    icon: './assets/icon.png',
     runtimeVersion: {
       policy: 'appVersion',
     },
     assetBundlePatterns: ['**/*'],
     ios: {
+      icon: './assets/icon.png',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
@@ -30,6 +32,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       package: process.env.BILT_ANDROID_PACKAGE ?? 'com.yourcompany.yourapp',
+      adaptiveIcon: {
+        foregroundImage: './assets/icon.png',
+        backgroundColor: '#05060A',
+      },
     },
     extra: {
       appStoreAppId: process.env.BILT_APP_STORE_APP_ID,
