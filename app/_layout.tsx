@@ -27,10 +27,13 @@ import {
   type ErrorBoundaryProps,
   SplashScreen,
   Stack,
+  useRouter,
+  useSegments,
 } from 'expo-router';
 
 import { initPostHog } from '@/lib/posthog';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
+import { useChakraStore } from '@/lib/store';
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -47,6 +50,26 @@ function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export { ErrorBoundary };
+
+/**
+ * Routes a first-run user into the intro carousel before the tabs.
+ * Once onboarded they land on the tabs; surfaces gate themselves.
+ */
+function useAccessGate() {
+  const router = useRouter();
+  const segments = useSegments();
+  const hydrated = useChakraStore((s) => s.hydrated);
+  const onboarded = useChakraStore((s) => s.onboarded);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const first = segments[0];
+    const inAccessFlow = first === 'onboarding' || first === 'paywall';
+    if (!onboarded && !inAccessFlow) {
+      router.replace('/onboarding');
+    }
+  }, [hydrated, onboarded, segments, router]);
+}
 
 // chakraOS is dark-only (clinical mysticism).
 Uniwind.setTheme('dark');
@@ -143,6 +166,8 @@ export default function RootLayout() {
     }
   }, [loaded, error]);
 
+  useAccessGate();
+
   if (!loaded && !error) {
     return null;
   }
@@ -152,6 +177,8 @@ export default function RootLayout() {
       <HeroUINativeProvider>
         <Stack screenOptions={{ contentStyle: { backgroundColor: '#0a0e18' } }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen
             name="inspector/[chakra]"
             options={{ presentation: 'modal', headerShown: false }}

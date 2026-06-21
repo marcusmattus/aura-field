@@ -33,6 +33,12 @@ function startOfDay(ts: number): number {
 
 interface ChakraOSState {
   hydrated: boolean;
+  /** completed the intro carousel */
+  onboarded: boolean;
+  /** has active access ($30/yr unlock) */
+  subscribed: boolean;
+  /** epoch ms the current term renews / expires */
+  subscriptionRenewsAt: number | null;
   entries: JournalEntry[];
   sessions: CompletedSession[];
   states: ChakraState[];
@@ -60,6 +66,9 @@ interface ChakraOSState {
     durationS: number;
   }) => void;
   setIntention: (text: string) => void;
+  completeOnboarding: () => void;
+  subscribe: () => void;
+  cancelSubscription: () => void;
 }
 
 function levelForXp(xp: number): number {
@@ -117,6 +126,9 @@ export const useChakraStore = create<ChakraOSState>()(
   persist(
     (set, get) => ({
       hydrated: false,
+      onboarded: false,
+      subscribed: false,
+      subscriptionRenewsAt: null,
       entries: [],
       sessions: [],
       states: initialStates,
@@ -255,11 +267,29 @@ export const useChakraStore = create<ChakraOSState>()(
       setIntention: (text) => {
         set((s) => ({ intention: { ...s.intention, text } }));
       },
+
+      completeOnboarding: () => {
+        set({ onboarded: true });
+      },
+
+      subscribe: () => {
+        // NOTE: mock unlock. Payments are not enabled in this project — once
+        // enabled, replace this with a real @biltme/iap purchase + receipt check.
+        const YEAR_MS = 365 * DAY_MS;
+        set({ subscribed: true, subscriptionRenewsAt: Date.now() + YEAR_MS });
+      },
+
+      cancelSubscription: () => {
+        set({ subscribed: false, subscriptionRenewsAt: null });
+      },
     }),
     {
       name: 'chakraos-v1',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
+        onboarded: s.onboarded,
+        subscribed: s.subscribed,
+        subscriptionRenewsAt: s.subscriptionRenewsAt,
         entries: s.entries,
         sessions: s.sessions,
         coachMessages: s.coachMessages,

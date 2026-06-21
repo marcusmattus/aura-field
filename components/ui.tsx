@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react';
-import { Text, View, type ViewProps } from 'react-native';
+import { Pressable, Text, View, type ViewProps } from 'react-native';
 import Animated, { FadeIn as RNFadeIn, FadeInDown } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
+import { Lock } from 'lucide-react-native';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/utils';
@@ -141,5 +143,49 @@ export function SoftFade({ children, style }: { children: ReactNode; style?: Vie
     <Animated.View entering={RNFadeIn.duration(420)} style={style}>
       {children}
     </Animated.View>
+  );
+}
+
+/**
+ * Full-surface lock for free-tier gated surfaces (Coach, Sound). Routes to the
+ * paywall. Render as a sibling overlay above blurred/dimmed surface content.
+ */
+export function LockOverlay({
+  surface,
+  accent,
+  title,
+  body,
+}: {
+  surface: string;
+  accent: string;
+  title: string;
+  body: string;
+}) {
+  const router = useRouter();
+  return (
+    <View className="bg-field/90 absolute inset-0 z-10 items-center justify-center px-8">
+      <View
+        className="h-16 w-16 items-center justify-center rounded-full"
+        style={{ backgroundColor: `${accent}22` }}
+      >
+        <Lock color={accent} size={26} />
+      </View>
+      <Mono style={{ color: accent, marginTop: 18 }}>{surface}</Mono>
+      <Display size={24} className="mt-2 text-center">
+        {title}
+      </Display>
+      <Text className="text-mute mt-3 text-center" style={{ fontSize: 14, lineHeight: 21 }}>
+        {body}
+      </Text>
+      <Pressable
+        className="mt-6 items-center justify-center rounded-full px-8 py-3.5"
+        style={{ backgroundColor: accent }}
+        onPress={() => router.push('/paywall')}
+      >
+        <Text className="font-mono-bold" style={{ fontSize: 12, color: '#0a0e18' }}>
+          UNLOCK · $30/YR
+        </Text>
+      </Pressable>
+    </View>
   );
 }

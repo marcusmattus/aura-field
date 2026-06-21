@@ -1,7 +1,8 @@
 import { format } from 'date-fns';
-import { Settings } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Check, Settings, Sparkles } from 'lucide-react-native';
 import { useMemo } from 'react';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
 
 import { AuraSigil } from '@/components/AuraSigil';
@@ -12,6 +13,7 @@ import { useChakraStore } from '@/lib/store';
 const ACCENT = SURFACE_ACCENT.you;
 
 export default function YouScreen() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const states = useChakraStore((s) => s.states);
   const xp = useChakraStore((s) => s.xp);
@@ -19,11 +21,29 @@ export default function YouScreen() {
   const streak = useChakraStore((s) => s.streak);
   const breakthroughs = useChakraStore((s) => s.breakthroughs);
   const intention = useChakraStore((s) => s.intention);
+  const subscribed = useChakraStore((s) => s.subscribed);
+  const renewsAt = useChakraStore((s) => s.subscriptionRenewsAt);
+  const cancelSubscription = useChakraStore((s) => s.cancelSubscription);
 
   const intentionDay = useMemo(() => {
     const days = Math.floor((Date.now() - intention.startedAt) / 86_400_000) + 1;
     return Math.min(days, intention.totalDays);
   }, [intention]);
+
+  const onCancel = () => {
+    if (Platform.OS === 'web') {
+      cancelSubscription();
+      return;
+    }
+    Alert.alert(
+      'Cancel membership?',
+      'You keep full access until the end of your current term, then revert to the free tier.',
+      [
+        { text: 'Keep membership', style: 'cancel' },
+        { text: 'Cancel', style: 'destructive', onPress: cancelSubscription },
+      ],
+    );
+  };
 
   return (
     <ScrollView
@@ -85,6 +105,60 @@ export default function YouScreen() {
             {intentionDay} / {intention.totalDays}
           </Mono>
         </Panel>
+      </View>
+
+      <View className="mt-5 px-4">
+        <Mono className="mb-2">MEMBERSHIP</Mono>
+        {subscribed ? (
+          <Panel className="p-4">
+            <View className="flex-row items-center gap-3">
+              <View
+                className="h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${ACCENT}22` }}
+              >
+                <Check color={ACCENT} size={16} />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-ink"
+                  style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14 }}
+                >
+                  Full access · active
+                </Text>
+                <Text className="text-mute font-mono" style={{ fontSize: 10 }}>
+                  $30/yr
+                  {renewsAt ? ` · renews ${format(new Date(renewsAt), 'd MMM yyyy')}` : ''}
+                </Text>
+              </View>
+            </View>
+            <Pressable className="mt-3 self-start" hitSlop={8} onPress={onCancel}>
+              <Mono style={{ color: SURFACE_ACCENT.you }}>CANCEL MEMBERSHIP</Mono>
+            </Pressable>
+          </Panel>
+        ) : (
+          <Pressable onPress={() => router.push('/paywall')}>
+            <Panel className="flex-row items-center gap-3 p-4">
+              <View
+                className="h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${ACCENT}22` }}
+              >
+                <Sparkles color={ACCENT} size={16} />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-ink"
+                  style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14 }}
+                >
+                  Unlock full access
+                </Text>
+                <Text className="text-mute font-mono" style={{ fontSize: 10 }}>
+                  Coach + Sound · $30/yr · cancel anytime
+                </Text>
+              </View>
+              <Mono style={{ color: ACCENT }}>OPEN</Mono>
+            </Panel>
+          </Pressable>
+        )}
       </View>
 
       <View className="mt-5 px-4">

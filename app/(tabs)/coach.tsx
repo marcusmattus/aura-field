@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Text } from 'heroui-native';
 
-import { Display, FadeIn, Mono, Panel } from '@/components/ui';
+import { Display, FadeIn, LockOverlay, Mono, Panel } from '@/components/ui';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
 import type { CoachMessage, Protocol } from '@/lib/types';
@@ -22,15 +22,16 @@ export default function CoachScreen() {
   const router = useRouter();
   const messages = useChakraStore((s) => s.coachMessages);
   const send = useChakraStore((s) => s.sendCoachMessage);
+  const subscribed = useChakraStore((s) => s.subscribed);
   const [text, setText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     // greet once if empty
-    if (messages.length === 0) {
+    if (subscribed && messages.length === 0) {
       void send('');
     }
-  }, [messages.length, send]);
+  }, [messages.length, send, subscribed]);
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
@@ -58,6 +59,14 @@ export default function CoachScreen() {
       className="bg-field flex-1"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {!subscribed && (
+        <LockOverlay
+          surface="COACH · FULL ACCESS"
+          accent={ACCENT}
+          title="Unlock your coach"
+          body="Full Coach conversations that cite your own field data are part of the membership."
+        />
+      )}
       <View className="pt-safe px-4">
         <View className="mt-3 flex-row items-center justify-between">
           <View>
