@@ -6,14 +6,14 @@ import { Text } from 'heroui-native';
 
 import { Chip, Display, Mono, Panel } from '@/components/ui';
 import { surfacedSignalsFor } from '@/lib/agents/coach';
-import { CHAKRA_BY_KEY } from '@/lib/chakras';
+import { CHAKRA_BY_KEY, isChakraKey } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
 import type { ChakraKey } from '@/lib/types';
 
 export default function InspectorScreen() {
   const router = useRouter();
   const { chakra } = useLocalSearchParams<{ chakra: ChakraKey }>();
-  const key = chakra ?? 'third';
+  const key: ChakraKey = isChakraKey(chakra) ? chakra : 'third';
   const def = CHAKRA_BY_KEY[key];
 
   const states = useChakraStore((s) => s.states);
@@ -111,8 +111,7 @@ export default function InspectorScreen() {
               className="flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3.5"
               style={{ backgroundColor: def.color }}
               onPress={() => {
-                router.back();
-                router.push({ pathname: '/session', params: { chakra: key } });
+                router.replace({ pathname: '/session', params: { chakra: key } });
               }}
             >
               <Play color="#0a0e18" size={14} fill="#0a0e18" />
@@ -124,7 +123,7 @@ export default function InspectorScreen() {
               className="border-line flex-row items-center justify-center gap-2 rounded-xl border px-4 py-3.5"
               onPress={() => {
                 router.back();
-                router.push({ pathname: '/journal', params: { seed: key } });
+                router.navigate({ pathname: '/(tabs)/journal', params: { seed: key } });
               }}
             >
               <PenLine color="#e9ecf5" size={14} />

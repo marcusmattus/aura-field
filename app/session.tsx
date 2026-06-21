@@ -8,7 +8,7 @@ import { SoundVisualizer } from '@/components/SoundVisualizer';
 import { Chip, Display, Mono } from '@/components/ui';
 import { useToneSession } from '@/hooks/useToneSession';
 import { sessionForChakra } from '@/lib/agents/coach';
-import { CHAKRA_BY_KEY, SURFACE_ACCENT } from '@/lib/chakras';
+import { CHAKRA_BY_KEY, isChakraKey, SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
 import type { ChakraKey } from '@/lib/types';
 
@@ -24,7 +24,7 @@ export default function SessionScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { chakra, mode } = useLocalSearchParams<{ chakra: ChakraKey; mode?: string }>();
-  const key = chakra ?? 'third';
+  const key: ChakraKey = isChakraKey(chakra) ? chakra : 'third';
   const def = CHAKRA_BY_KEY[key];
   const isBreath = mode === 'breath';
 
