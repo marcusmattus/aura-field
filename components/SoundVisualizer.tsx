@@ -8,8 +8,16 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 interface SoundVisualizerProps {
   size: number;
-  color: string;
-  /** 0..1 playback progress, drives ring expansion */
+  /** center bloom color — derived `palette.core` (frequencyToColor(baseHz)) */
+  core: string;
+  /** radiating bars/rings color — derived `palette.ring` (the fifth-up accent) */
+  ring: string;
+  /** ring density — derived from the brainwave band (`band.rings`) */
+  rings?: number;
+  /** breath period in seconds — derived from the band (`band.tempoS`) */
+  tempoS?: number;
+  /** glow spread 0..1 — derived from the band (`band.soft`) */
+  soft?: number;
   playing: boolean;
 }
 
@@ -40,23 +48,43 @@ function Bars({ size, color, pulse }: { size: number; color: string; pulse: Shar
   return <Path path={path} color={color} style="stroke" strokeWidth={2} strokeCap="round" />;
 }
 
-/** Radial Skia visualizer reacting to playback (synthesized envelope). */
-export function SoundVisualizer({ size, color, playing }: SoundVisualizerProps) {
+/**
+ * Radial Skia visualizer. Everything it draws is derived: `core`/`ring` colors
+ * come from `frequencyToColor`, ring count + tempo + glow come from the
+ * brainwave band. No hardcoded colors, no per-session branches.
+ */
+export function SoundVisualizer({
+  size,
+  core,
+  ring,
+  rings = 3,
+  tempoS = 4.2,
+  soft = 0.6,
+  playing,
+}: SoundVisualizerProps) {
   const reduced = useReducedMotion();
-  const pulse = useBreath(reduced || !playing);
+  const pulse = useBreath(reduced || !playing, tempoS * 1000);
   const cx = size / 2;
   const cy = size / 2;
 
   const ringR = useDerivedValue(() => size * 0.14 * (1 + pulse.value * 0.25));
 
-  const rings = useMemo(() => [0.28, 0.34, 0.41], []);
+  // ring radii spread by band density — more rings = tighter, brighter field
+  const ringRadii = useMemo(() => {
+    const count = Math.max(1, Math.round(rings));
+    const lo = 0.26;
+    const hi = 0.46;
+    return Array.from({ length: count }, (_, i) =>
+      count === 1 ? (lo + hi) / 2 : lo + ((hi - lo) * i) / (count - 1),
+    );
+  }, [rings]);
 
   return (
     <View style={{ width: size, height: size }}>
       <Canvas style={{ width: size, height: size }}>
         {/* oxlint-disable react/style-prop-object */}
-        <Group opacity={0.3}>
-          {rings.map((r) => (
+        <Group opacity={0.18 + soft * 0.22}>
+          {ringRadii.map((r) => (
             <Circle
               key={r}
               cx={cx}
@@ -64,18 +92,18 @@ export function SoundVisualizer({ size, color, playing }: SoundVisualizerProps) 
               r={size * r}
               style="stroke"
               strokeWidth={1}
-              color={color}
+              color={ring}
             />
           ))}
         </Group>
         {/* oxlint-enable react/style-prop-object */}
 
-        <Bars size={size} color={color} pulse={pulse} />
+        <Bars size={size} color={ring} pulse={pulse} />
 
         <Group>
-          <Circle cx={cx} cy={cy} r={size * 0.18} color={color} opacity={0.18} />
-          <Circle cx={cx} cy={cy} r={ringR} color={color} opacity={0.5} />
-          <Circle cx={cx} cy={cy} r={size * 0.04} color="#ffffff" opacity={0.85} />
+          <Circle cx={cx} cy={cy} r={size * 0.18} color={core} opacity={0.16 + soft * 0.16} />
+          <Circle cx={cx} cy={cy} r={ringR} color={core} opacity={0.5} />
+          <Circle cx={cx} cy={cy} r={size * 0.045} color={core} opacity={0.95} />
         </Group>
       </Canvas>
     </View>
