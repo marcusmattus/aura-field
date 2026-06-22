@@ -155,6 +155,16 @@ export const LEXICON: LexEntry[] = [
   },
 ];
 
+/**
+ * Theme → signal direction, derived from the LEXICON so the field agent never
+ * re-hardcodes which themes lift vs drain. This is the single source of truth:
+ * add a lexicon entry and its direction flows into scoring automatically.
+ */
+export const THEME_SIGNAL: Record<string, 'low' | 'high'> = {};
+for (const lex of LEXICON) {
+  if (lex.signal !== 'neutral') THEME_SIGNAL[lex.theme] = lex.signal;
+}
+
 /** Circadian markers — late-night entries depress Third Eye / Crown. */
 export const LATE_NIGHT_WORDS = [
   'late-night',

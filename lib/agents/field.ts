@@ -1,3 +1,4 @@
+import { THEME_SIGNAL } from '@/lib/agents/awareness';
 import { CHAKRA_BY_KEY, CHAKRA_ORDER, FIELD_INDEX_WEIGHTS } from '@/lib/chakras';
 import type { ChakraKey, ChakraState, CompletedSession, JournalEntry } from '@/lib/types';
 
@@ -6,19 +7,30 @@ import type { ChakraKey, ChakraState, CompletedSession, JournalEntry } from '@/l
  * session activity + circadian factors into each node's energy, per-node 7d
  * trend, and the daily field index. The LLM only narrates edge harmonics —
  * it never writes the numbers. Scoring constants live here as config.
+ *
+ * Energy moves away from a per-node baseline by accumulating decayed lift/drain
+ * pressure, then mapping each direction through a saturating curve toward the
+ * available headroom — so values grade smoothly and approach (rather than slam)
+ * 1/100. Old influence simply decays, which reverts energy to baseline over time.
  */
 const CONFIG = {
   /** half-life of a journal tag's influence, in days */
   tagHalfLifeDays: 5,
-  /** max points a single decayed tag can move a node */
+  /** points of pressure a single fresh, full-weight tag contributes */
   tagMaxImpact: 22,
-  /** lift from completing a session for the matching node */
+  /** a neutral (reflection) tag contributes this fraction of a full tag, as lift */
+  neutralFactor: 0.2,
+  /** lift pressure from completing a session for the matching node (10-min ref) */
   sessionLift: 8,
   sessionHalfLifeDays: 4,
+  /** reference session length the lift is normalised to (seconds) */
+  sessionRefDurationS: 600,
   /** late-night depression applied to third/crown */
   lateNightPenalty: 6,
-  /** how fast energy reverts toward baseline per day with no input */
-  baselineReversion: 0.12,
+  /** floor on the 7-days-ago denominator so tiny pasts don't explode the trend % */
+  trendDenominatorFloor: 25,
+  /** cap on the reported 7d trend magnitude (%) to keep it meaningful + legible */
+  trendCap: 99,
 };
 
 const DAY_MS = 86_400_000;
@@ -59,7 +71,11 @@ function computeAt(
   return CHAKRA_ORDER.map((key) => {
     const energy = energyNow[key];
     const past = energyPast[key];
-    const trend7d = past > 0 ? Math.round(((energy - past) / past) * 100) : 0;
+    // Percent change vs the 7-days-ago snapshot, with a denominator floor so a
+    // near-zero past can't yield an absurd swing, then capped for legibility.
+    const denom = Math.max(past, CONFIG.trendDenominatorFloor);
+    const raw = Math.round(((energy - past) / denom) * 100);
+    const trend7d = clamp(raw, -CONFIG.trendCap, CONFIG.trendCap);
     return { key, energy: Math.round(energy), trend7d };
   });
 }
@@ -74,7 +90,10 @@ function energyMap(
 
   for (const key of CHAKRA_ORDER) {
     const baseline = CHAKRA_BY_KEY[key].baseline;
-    let delta = 0;
+    // Accumulate lift and drain pressure separately so each saturates toward its
+    // own headroom — a node can be strongly lifted and lightly drained at once.
+    let pos = 0;
+    let neg = 0;
     let lateNightHits = 0;
 
     for (const entry of entries) {
@@ -83,35 +102,40 @@ function energyMap(
       const d = decay(ageDays, CONFIG.tagHalfLifeDays);
       for (const tag of entry.tags) {
         if (tag.chakra !== key) continue;
-        const dir = directionForTheme(tag.theme);
-        delta += dir * tag.weight * CONFIG.tagMaxImpact * d;
+        const pressure = tag.weight * CONFIG.tagMaxImpact * d;
+        const signal = THEME_SIGNAL[tag.theme];
+        if (signal === 'high') pos += pressure;
+        else if (signal === 'low') neg += pressure;
+        else pos += pressure * CONFIG.neutralFactor; // neutral reflection nudges up
       }
       if ((key === 'third' || key === 'crown') && entry.themes.includes('late-night')) {
         lateNightHits += d;
       }
     }
 
-    delta -= lateNightHits * CONFIG.lateNightPenalty;
+    neg += lateNightHits * CONFIG.lateNightPenalty;
 
     for (const s of sessions) {
       if (s.completedAt > at || s.chakra !== key) continue;
       const ageDays = (at - s.completedAt) / DAY_MS;
-      delta += CONFIG.sessionLift * decay(ageDays, CONFIG.sessionHalfLifeDays);
+      const durScale = clamp(s.durationS / CONFIG.sessionRefDurationS, 0.5, 1.5);
+      pos += CONFIG.sessionLift * durScale * decay(ageDays, CONFIG.sessionHalfLifeDays);
     }
 
-    result[key] = clamp(baseline + delta, 1, 100);
+    result[key] = baseline + saturate(pos, 100 - baseline) - saturate(neg, baseline - 1);
   }
 
   return result;
 }
 
-/** Map a theme to a signed direction. Low themes pull down, high lift up. */
-function directionForTheme(theme: string): number {
-  const lowThemes = ['exhaustion', 'overwhelm', 'silence', 'grief', 'doubt', 'flatness', 'unsafe'];
-  const highThemes = ['insight', 'meaning', 'expression', 'release', 'will', 'flow', 'ground'];
-  if (lowThemes.includes(theme)) return -1;
-  if (highThemes.includes(theme)) return 1;
-  return 0.2; // neutral reflection nudges slightly up
+/**
+ * Map unbounded pressure into [0, headroom). Initial slope is 1 (so a small
+ * single tag moves energy by roughly its raw points, preserving responsiveness)
+ * and it asymptotes to `headroom`, so energy approaches but never slams the rail.
+ */
+function saturate(pressure: number, headroom: number): number {
+  if (headroom <= 0) return 0;
+  return headroom * (1 - Math.exp(-pressure / headroom));
 }
 
 function clamp(v: number, lo: number, hi: number): number {
