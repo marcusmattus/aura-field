@@ -55,20 +55,20 @@ export { ErrorBoundary };
  * Routes a first-run user into the intro carousel before the tabs.
  * Once onboarded they land on the tabs; surfaces gate themselves.
  */
-function useAccessGate() {
+function useAccessGate(navigatorReady: boolean) {
   const router = useRouter();
   const segments = useSegments();
   const hydrated = useChakraStore((s) => s.hydrated);
   const onboarded = useChakraStore((s) => s.onboarded);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!navigatorReady || !hydrated) return;
     const first = segments[0];
     const inAccessFlow = first === 'onboarding' || first === 'paywall';
     if (!onboarded && !inAccessFlow) {
       router.replace('/onboarding');
     }
-  }, [hydrated, onboarded, segments, router]);
+  }, [navigatorReady, hydrated, onboarded, segments, router]);
 }
 
 // chakraOS is dark-only (clinical mysticism).
@@ -166,7 +166,11 @@ export default function RootLayout() {
     }
   }, [loaded, error]);
 
-  useAccessGate();
+  // The Stack navigator only mounts once fonts are resolved. Gate navigation on
+  // that so we never call router.replace before the Root Layout has rendered a
+  // navigator (which throws "Attempted to navigate before mounting...").
+  const navigatorReady = loaded || Boolean(error);
+  useAccessGate(navigatorReady);
 
   if (!loaded && !error) {
     return null;
