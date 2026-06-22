@@ -33,9 +33,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       package: process.env.BILT_ANDROID_PACKAGE ?? 'com.yourcompany.yourapp',
       adaptiveIcon: {
-        foregroundImage: './assets/icon.png',
+        foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#05060A',
       },
+    },
+    web: {
+      favicon: './assets/favicon.png',
     },
     extra: {
       appStoreAppId: process.env.BILT_APP_STORE_APP_ID,
@@ -43,6 +46,19 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       'expo-router',
       'expo-font',
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/splash-icon.png',
+          imageWidth: 220,
+          resizeMode: 'contain',
+          backgroundColor: '#05060A',
+          dark: {
+            image: './assets/splash-icon.png',
+            backgroundColor: '#05060A',
+          },
+        },
+      ],
       [
         'expo-audio',
         {
