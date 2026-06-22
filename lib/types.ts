@@ -126,3 +126,25 @@ export interface Observation {
   text: string;
   chips: { label: string; surface: SurfaceKey; hz?: number; chakra?: ChakraKey }[];
 }
+
+/** Self-reported baseline mood, 1 (heavy) – 5 (clear). */
+export type BaselineMood = 1 | 2 | 3 | 4 | 5;
+
+/** How long the user has worked with this kind of practice. */
+export type ExperienceLevel = 'new' | 'some' | 'devoted';
+
+/**
+ * Identity + wellbeing intake. Collected during onboarding to personalize the
+ * field. `id` matches the Supabase auth user id; the row lives in
+ * `public.profiles`.
+ */
+export interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  birthdate: string | null; // ISO yyyy-mm-dd
+  focusAreas: ChakraKey[];
+  baselineMood: BaselineMood | null;
+  experienceLevel: ExperienceLevel | null;
+  primaryIntention: string;
+}

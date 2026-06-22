@@ -62,7 +62,7 @@ export default function OnboardingScreen() {
   const next = () => {
     if (last) {
       completeOnboarding();
-      router.replace('/paywall');
+      router.replace('/auth');
       return;
     }
     scrollRef.current?.scrollTo({ x: width * (index + 1), animated: true });
@@ -70,7 +70,7 @@ export default function OnboardingScreen() {
 
   const skip = () => {
     completeOnboarding();
-    router.replace('/paywall');
+    router.replace('/auth');
   };
 
   const accent = SLIDES[index].accent;
@@ -133,7 +133,7 @@ export default function OnboardingScreen() {
           onPress={next}
         >
           <Text className="font-mono-bold" style={{ fontSize: 13, color: '#0a0e18' }}>
-            {last ? 'UNLOCK CHAKRAOS' : 'CONTINUE'}
+            {last ? 'CREATE ACCOUNT' : 'CONTINUE'}
           </Text>
           <ArrowRight color="#0a0e18" size={16} />
         </Pressable>

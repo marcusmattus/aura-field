@@ -1,14 +1,15 @@
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { Check, Settings, Sparkles } from 'lucide-react-native';
+import { Check, LogOut, Settings, Sparkles } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Alert, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
 
 import { AuraSigil } from '@/components/AuraSigil';
 import { FadeIn, Mono, Panel, SoftFade, Voice } from '@/components/ui';
-import { SURFACE_ACCENT } from '@/lib/chakras';
+import { SURFACE_ACCENT, CHAKRA_BY_KEY } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
+import type { ChakraKey } from '@/lib/types';
 
 const ACCENT = SURFACE_ACCENT.you;
 
@@ -24,7 +25,10 @@ export default function YouScreen() {
   const subscribed = useChakraStore((s) => s.subscribed);
   const renewsAt = useChakraStore((s) => s.subscriptionRenewsAt);
   const cancelSubscription = useChakraStore((s) => s.cancelSubscription);
+  const profile = useChakraStore((s) => s.profile);
+  const signOut = useChakraStore((s) => s.signOut);
 
+  const displayName = profile?.displayName?.trim() || 'Seeker';
   const intentionDay = useMemo(() => {
     const days = Math.floor((Date.now() - intention.startedAt) / 86_400_000) + 1;
     return Math.min(days, intention.totalDays);
@@ -45,6 +49,24 @@ export default function YouScreen() {
     );
   };
 
+  const onSignOut = () => {
+    const run = () => {
+      void signOut();
+    };
+    if (Platform.OS === 'web') {
+      run();
+      return;
+    }
+    Alert.alert(
+      'Sign out?',
+      'Your journey data stays on this device. You can sign back in anytime.',
+      [
+        { text: 'Stay signed in', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive', onPress: run },
+      ],
+    );
+  };
+
   return (
     <ScrollView
       className="bg-field flex-1"
@@ -53,16 +75,21 @@ export default function YouScreen() {
     >
       <View className="pt-safe px-4">
         <View className="mt-3 flex-row items-center justify-between">
-          <View>
+          <View className="flex-1">
             <Mono className="text-you">PROFILE</Mono>
             <Text
               className="text-ink mt-1"
               style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 26 }}
             >
-              Avani M.
+              {displayName}
             </Text>
+            {profile?.email ? (
+              <Text className="text-faint font-mono" style={{ fontSize: 10, letterSpacing: 0.6 }}>
+                {profile.email.toUpperCase()}
+              </Text>
+            ) : null}
           </View>
-          <Pressable hitSlop={10}>
+          <Pressable hitSlop={10} onPress={() => router.push('/profile-setup')}>
             <Settings color="#8a90a6" size={20} />
           </Pressable>
         </View>
@@ -106,6 +133,29 @@ export default function YouScreen() {
           </Mono>
         </Panel>
       </View>
+
+      {profile?.focusAreas && profile.focusAreas.length > 0 ? (
+        <View className="mt-5 px-4">
+          <Mono className="mb-2">FOCUS AREAS</Mono>
+          <Panel className="flex-row flex-wrap gap-2 p-4">
+            {profile.focusAreas.map((key: ChakraKey) => {
+              const c = CHAKRA_BY_KEY[key];
+              return (
+                <View
+                  key={key}
+                  className="flex-row items-center gap-2 rounded-full border px-3 py-1.5"
+                  style={{ borderColor: `${c.color}66`, backgroundColor: `${c.color}1a` }}
+                >
+                  <View className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
+                  <Text className="font-mono" style={{ fontSize: 11, color: c.color }}>
+                    {c.name.toUpperCase()}
+                  </Text>
+                </View>
+              );
+            })}
+          </Panel>
+        </View>
+      ) : null}
 
       <View className="mt-5 px-4">
         <Mono className="mb-2">MEMBERSHIP</Mono>
@@ -189,6 +239,17 @@ export default function YouScreen() {
             ))
           )}
         </View>
+      </View>
+
+      <View className="mt-6 px-4">
+        <Pressable onPress={onSignOut}>
+          <Panel className="flex-row items-center justify-center gap-2 p-4">
+            <LogOut color="#8a90a6" size={15} />
+            <Text className="text-mute font-mono" style={{ fontSize: 12, letterSpacing: 1 }}>
+              SIGN OUT
+            </Text>
+          </Panel>
+        </Pressable>
       </View>
 
       <View className="mt-6 px-4">

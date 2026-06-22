@@ -8,6 +8,7 @@ import { computeFieldIndex, recomputeField } from '@/lib/agents/field';
 import { detectBreakthroughs } from '@/lib/agents/oracle';
 import { remoteAnalyze, remoteCoach } from '@/lib/agents/remote';
 import { CHAKRA_ORDER } from '@/lib/chakras';
+import { fetchProfile, saveProfile, signOutUser } from '@/lib/supabase';
 import type {
   Breakthrough,
   ChakraKey,
@@ -17,6 +18,7 @@ import type {
   Intention,
   JournalEntry,
   Modality,
+  UserProfile,
 } from '@/lib/types';
 
 const DAY_MS = 86_400_000;
@@ -39,6 +41,12 @@ interface ChakraOSState {
   subscribed: boolean;
   /** epoch ms the current term renews / expires */
   subscriptionRenewsAt: number | null;
+  /** true once the user has a valid Supabase auth session */
+  authenticated: boolean;
+  /** true once the user has completed the profile intake form */
+  profileComplete: boolean;
+  /** persisted user profile from the intake form */
+  profile: UserProfile | null;
   entries: JournalEntry[];
   sessions: CompletedSession[];
   states: ChakraState[];
@@ -69,6 +77,12 @@ interface ChakraOSState {
   completeOnboarding: () => void;
   subscribe: () => void;
   cancelSubscription: () => void;
+  /** Called after a successful Supabase auth event; reads the session user. */
+  onAuthenticated: () => Promise<void>;
+  /** Persist the user's profile intake data. Returns true on success. */
+  saveUserProfile: (data: Omit<UserProfile, 'id' | 'email'>) => Promise<boolean>;
+  /** Sign out of Supabase and clear auth state. */
+  signOut: () => Promise<void>;
 }
 
 function levelForXp(xp: number): number {
@@ -129,6 +143,9 @@ export const useChakraStore = create<ChakraOSState>()(
       onboarded: false,
       subscribed: false,
       subscriptionRenewsAt: null,
+      authenticated: false,
+      profileComplete: false,
+      profile: null,
       entries: [],
       sessions: [],
       states: initialStates,
@@ -282,6 +299,38 @@ export const useChakraStore = create<ChakraOSState>()(
       cancelSubscription: () => {
         set({ subscribed: false, subscriptionRenewsAt: null });
       },
+
+      onAuthenticated: async () => {
+        const profile = await fetchProfile();
+        set({
+          authenticated: true,
+          profile,
+          profileComplete: Boolean(profile?.displayName),
+        });
+        // If a returning member already set a primary intention, mirror it into
+        // the local 30-day intention so the You tab stays coherent.
+        if (profile?.primaryIntention) {
+          set((s) => ({ intention: { ...s.intention, text: profile.primaryIntention } }));
+        }
+      },
+
+      saveUserProfile: async (patch) => {
+        const saved = await saveProfile(patch);
+        if (!saved) return false;
+        set((s) => ({
+          profile: saved,
+          profileComplete: Boolean(saved.displayName),
+          intention: saved.primaryIntention
+            ? { ...s.intention, text: saved.primaryIntention }
+            : s.intention,
+        }));
+        return true;
+      },
+
+      signOut: async () => {
+        await signOutUser();
+        set({ authenticated: false, profile: null, profileComplete: false });
+      },
     }),
     {
       name: 'chakraos-v1',
@@ -290,6 +339,9 @@ export const useChakraStore = create<ChakraOSState>()(
         onboarded: s.onboarded,
         subscribed: s.subscribed,
         subscriptionRenewsAt: s.subscriptionRenewsAt,
+        authenticated: s.authenticated,
+        profileComplete: s.profileComplete,
+        profile: s.profile,
         entries: s.entries,
         sessions: s.sessions,
         coachMessages: s.coachMessages,
@@ -321,6 +373,23 @@ export const useChakraStore = create<ChakraOSState>()(
         }
         state?.recompute();
         useChakraStore.setState({ hydrated: true });
+        // Reconcile the persisted auth flag with the real Supabase session: a
+        // session may have expired since last launch. If still valid, refresh
+        // the profile from the backend.
+        void (async () => {
+          const { supabase } = await import('@/lib/supabase');
+          if (!supabase) return;
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            await useChakraStore.getState().onAuthenticated();
+          } else if (useChakraStore.getState().authenticated) {
+            useChakraStore.setState({
+              authenticated: false,
+              profile: null,
+              profileComplete: false,
+            });
+          }
+        })();
       },
     },
   ),

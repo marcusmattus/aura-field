@@ -52,23 +52,38 @@ function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 export { ErrorBoundary };
 
 /**
- * Routes a first-run user into the intro carousel before the tabs.
- * Once onboarded they land on the tabs; surfaces gate themselves.
+ * Routes a first-run user through the full entry flow before the tabs:
+ * onboarding slides -> auth (sign in) -> profile intake -> paywall.
+ * Each stage is gated on the prior one being complete.
  */
 function useAccessGate(navigatorReady: boolean) {
   const router = useRouter();
   const segments = useSegments();
   const hydrated = useChakraStore((s) => s.hydrated);
   const onboarded = useChakraStore((s) => s.onboarded);
+  const authenticated = useChakraStore((s) => s.authenticated);
+  const profileComplete = useChakraStore((s) => s.profileComplete);
 
   useEffect(() => {
     if (!navigatorReady || !hydrated) return;
     const first = segments[0];
-    const inAccessFlow = first === 'onboarding' || first === 'paywall';
-    if (!onboarded && !inAccessFlow) {
-      router.replace('/onboarding');
+
+    if (!onboarded) {
+      if (first !== 'onboarding') router.replace('/onboarding');
+      return;
     }
-  }, [navigatorReady, hydrated, onboarded, segments, router]);
+    if (!authenticated) {
+      // Allow the onboarding slides and the paywall (skip path) through, but
+      // steer anyone landing on the tabs back to sign in.
+      if (first !== 'auth' && first !== 'onboarding') router.replace('/auth');
+      return;
+    }
+    if (!profileComplete) {
+      if (first !== 'profile-setup' && first !== 'paywall' && first !== 'auth') {
+        router.replace('/profile-setup');
+      }
+    }
+  }, [navigatorReady, hydrated, onboarded, authenticated, profileComplete, segments, router]);
 }
 
 // chakraOS is dark-only (clinical mysticism).
@@ -182,6 +197,8 @@ export default function RootLayout() {
         <Stack screenOptions={{ contentStyle: { backgroundColor: '#0a0e18' } }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="auth" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
           <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen
             name="inspector/[chakra]"
