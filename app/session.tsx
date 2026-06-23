@@ -1,18 +1,16 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronDown, Pause, Play, SkipBack, SkipForward } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, Headphones, Pause, Play, SkipBack, SkipForward } from 'lucide-react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
 
 import { SoundVisualizer } from '@/components/SoundVisualizer';
 import { Chip, Display, Mono } from '@/components/ui';
-import { useToneSession } from '@/hooks/useToneSession';
-import { sessionForChakra } from '@/lib/agents/coach';
-import { CHAKRA_BY_KEY, isChakraKey, SURFACE_ACCENT } from '@/lib/chakras';
+import { useSessionTone } from '@/hooks/useToneSession';
+import { CHAKRA_BY_KEY, isChakraKey } from '@/lib/chakras';
+import { coreSessionForChakra, deriveSession, derivedById, type DerivedSession } from '@/lib/sound';
 import { useChakraStore } from '@/lib/store';
 import type { ChakraKey } from '@/lib/types';
-
-const ACCENT = SURFACE_ACCENT.sound;
 
 function fmt(s: number): string {
   const m = Math.floor(s / 60);
@@ -20,18 +18,69 @@ function fmt(s: number): string {
   return `${m}:${sec.toString().padStart(2, '0')}`;
 }
 
+/** Resolve the session to play from the route params, always derived. */
+function resolveSession(params: {
+  id?: string;
+  chakra?: string;
+  baseHz?: string;
+  beatHz?: string;
+  durationSec?: string;
+  name?: string;
+}): DerivedSession {
+  // 1) a real library id
+  if (params.id) {
+    const found = derivedById(params.id);
+    if (found) return found;
+  }
+  // 2) raw frequency composed by the agent (or the suggested card)
+  const baseHz = Number(params.baseHz);
+  if (Number.isFinite(baseHz) && baseHz > 0) {
+    const beat = Number(params.beatHz);
+    const duration = Number(params.durationSec);
+    return deriveSession({
+      id: params.id ?? 'composed',
+      name: params.name ?? 'Session',
+      packId: 'composed',
+      baseHz,
+      beatHz: Number.isFinite(beat) && beat > 0 ? beat : undefined,
+      durationSec: Number.isFinite(duration) && duration > 0 ? duration : 600,
+    });
+  }
+  // 3) a node — open its Solfeggio Core drone (Inspector launch)
+  const key: ChakraKey = isChakraKey(params.chakra) ? params.chakra : 'third';
+  return (
+    coreSessionForChakra(key) ??
+    deriveSession({
+      id: 'core-third',
+      name: 'Third Eye Drone',
+      packId: 'solfeggio-core',
+      baseHz: 852,
+      durationSec: 600,
+    })
+  );
+}
+
 export default function SessionScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { chakra, mode } = useLocalSearchParams<{ chakra: ChakraKey; mode?: string }>();
-  const key: ChakraKey = isChakraKey(chakra) ? chakra : 'third';
-  const def = CHAKRA_BY_KEY[key];
-  const isBreath = mode === 'breath';
+  // oxlint-disable-next-line typescript/no-unnecessary-type-arguments -- explicit param shape; false positive on expo-router's overloaded generic
+  const params = useLocalSearchParams<{
+    id?: string;
+    chakra?: string;
+    baseHz?: string;
+    beatHz?: string;
+    durationSec?: string;
+    name?: string;
+    mode?: 'breath';
+  }>();
+  const isBreath = params.mode === 'breath';
+
+  const session = useMemo(() => resolveSession(params), [params]);
+  const def = CHAKRA_BY_KEY[session.chakra];
 
   const completeSession = useChakraStore((s) => s.completeSession);
 
-  // Use a compressed demo duration so the loop closes quickly in preview.
-  const session = sessionForChakra(key);
+  // Compressed demo duration so the loop closes quickly in preview.
   const totalS = isBreath ? 60 : 90;
 
   const [elapsed, setElapsed] = useState(0);
@@ -39,9 +88,10 @@ export default function SessionScreen() {
   const completedRef = useRef(false);
 
   // Breath sessions are silent (paced breathing); sound sessions play the tone.
-  useToneSession({
-    carrierHz: session.hz,
-    band: session.brainwaveBand,
+  useSessionTone({
+    baseHz: session.baseHz,
+    beatHz: session.beatHz,
+    noise: session.noise,
     playing: playing && !isBreath,
   });
 
@@ -53,31 +103,40 @@ export default function SessionScreen() {
         if (next >= totalS && !completedRef.current) {
           completedRef.current = true;
           completeSession({
-            sessionKey: session.key,
-            chakra: key,
-            hz: session.hz,
-            durationS: session.durationS,
+            sessionKey: session.id,
+            chakra: session.chakra,
+            hz: session.baseHz,
+            durationS: session.durationSec,
           });
         }
         return Math.min(next, totalS);
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [playing, totalS, completeSession, session.key, session.hz, session.durationS, key]);
+  }, [
+    playing,
+    totalS,
+    completeSession,
+    session.id,
+    session.chakra,
+    session.baseHz,
+    session.durationSec,
+  ]);
 
   const done = elapsed >= totalS;
   const remaining = totalS - elapsed;
+  const accent = session.palette.core;
 
   return (
     <View className="bg-field flex-1">
       <View className="pt-safe-offset-3 px-5">
         <View className="flex-row items-center justify-between">
           <View>
-            <Mono className="text-sound">
+            <Mono style={{ color: accent }}>
               {isBreath ? 'BREATHWORK · 4-4-4-4' : 'NOW PLAYING · SESSION'}
             </Mono>
             <Display size={22} className="mt-1">
-              {isBreath ? `${def.name} Breath` : session.title}
+              {isBreath ? `${def.name} Breath` : session.name}
             </Display>
           </View>
           <Pressable onPress={() => router.back()} hitSlop={12}>
@@ -89,18 +148,30 @@ export default function SessionScreen() {
       <View className="flex-1 items-center justify-center">
         <SoundVisualizer
           size={Math.min(width - 60, 320)}
-          color={ACCENT}
+          core={session.palette.core}
+          ring={session.palette.ring}
+          rings={session.rings}
+          tempoS={session.tempoS}
+          soft={session.glow}
           playing={playing && !done}
         />
         <Display size={26} className="mt-6">
-          {session.hz} Hz · {def.name.toLowerCase()} carrier
+          {session.baseHz} Hz · {session.bandIntent}
         </Display>
         <Text className="text-mute mt-1 font-mono" style={{ fontSize: 12 }}>
-          {session.brainwaveBand} · {Math.round(session.durationS / 60)} min
+          {session.label}
         </Text>
+        {session.beatHz ? (
+          <View className="mt-3 flex-row items-center gap-1.5">
+            <Headphones color="#8a90a6" size={13} />
+            <Text className="text-faint font-mono" style={{ fontSize: 10 }}>
+              BEST WITH HEADPHONES · BINAURAL {session.beatHz} HZ
+            </Text>
+          </View>
+        ) : null}
         <View className="mt-4 flex-row flex-wrap justify-center gap-2">
-          {session.tags.map((t) => (
-            <Chip key={t} label={t} color={ACCENT} />
+          {(session.tags ?? []).map((t) => (
+            <Chip key={t} label={t} color={accent} />
           ))}
         </View>
         {done ? (
@@ -126,7 +197,7 @@ export default function SessionScreen() {
         <View className="bg-line mt-2 h-1 overflow-hidden rounded-full">
           <View
             className="h-full rounded-full"
-            style={{ width: `${(elapsed / totalS) * 100}%`, backgroundColor: ACCENT }}
+            style={{ width: `${(elapsed / totalS) * 100}%`, backgroundColor: accent }}
           />
         </View>
 
@@ -138,7 +209,7 @@ export default function SessionScreen() {
             onPress={() => setPlaying((p) => !p)}
             disabled={done}
             className="h-16 w-16 items-center justify-center rounded-full"
-            style={{ backgroundColor: done ? '#1e2535' : ACCENT }}
+            style={{ backgroundColor: done ? '#1e2535' : accent }}
           >
             {playing && !done ? (
               <Pause color="#0a0e18" size={24} fill="#0a0e18" />

@@ -88,17 +88,6 @@ export interface Protocol {
   durationS?: number;
 }
 
-export interface SoundSession {
-  key: string;
-  chakra: ChakraKey;
-  hz: number;
-  brainwaveBand: string; // "alpha 8 Hz"
-  durationS: number;
-  title: string;
-  intent: string;
-  tags: string[];
-}
-
 export interface CompletedSession {
   id: string;
   sessionKey: string;

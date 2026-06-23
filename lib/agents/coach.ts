@@ -1,12 +1,5 @@
 import { CHAKRA_BY_KEY } from '@/lib/chakras';
-import type {
-  ChakraKey,
-  ChakraState,
-  JournalEntry,
-  Protocol,
-  SoundSession,
-  SurfacedSignal,
-} from '@/lib/types';
+import type { ChakraKey, ChakraState, JournalEntry, Protocol, SurfacedSignal } from '@/lib/types';
 
 const DAY_MS = 86_400_000;
 
@@ -66,50 +59,6 @@ function phraseForTheme(theme: string, _text: string): string {
     reflection: 'direct reflections on this node',
   };
   return map[theme] ?? `mentions of "${theme}"`;
-}
-
-/**
- * Frequency agent — maps current field state to a sound session.
- * Targets the most depressed weighted node.
- */
-export function suggestSession(states: ChakraState[]): SoundSession {
-  const target = [...states].sort((a, b) => a.energy - b.energy)[0];
-  const chakra = CHAKRA_BY_KEY[target.key];
-  const band = bandForChakra(target.key);
-  const duration = target.energy < 35 ? 720 : 600; // 12 or 10 min
-
-  return {
-    key: `${target.key}-${chakra.solfeggioHz}`,
-    chakra: target.key,
-    hz: chakra.solfeggioHz,
-    brainwaveBand: band,
-    durationS: duration,
-    title: `${chakra.name} Restoration`,
-    intent: target.energy < 35 ? 'restorative' : 'rebalancing',
-    tags: [chakra.name, target.energy < 35 ? 'RESTORATIVE' : 'BALANCING', 'SOLFEGGIO'],
-  };
-}
-
-function bandForChakra(key: ChakraKey): string {
-  // Derived from the canonical node data so the binaural offset + band stay in
-  // one place (lib/chakras.ts). Format kept stable: "binaural beat N Hz · band".
-  const chakra = CHAKRA_BY_KEY[key];
-  return `binaural beat ${chakra.binauralOffsetHz} Hz · ${chakra.brainwaveBand}`;
-}
-
-/** Build a sound session object for a specific node + hz (e.g. Inspector launch). */
-export function sessionForChakra(key: ChakraKey): SoundSession {
-  const chakra = CHAKRA_BY_KEY[key];
-  return {
-    key: `${key}-${chakra.solfeggioHz}`,
-    chakra: key,
-    hz: chakra.solfeggioHz,
-    brainwaveBand: bandForChakra(key),
-    durationS: 720,
-    title: `${chakra.name} Restoration`,
-    intent: 'restorative',
-    tags: [chakra.name, 'RESTORATIVE', 'SOLFEGGIO'],
-  };
 }
 
 /**

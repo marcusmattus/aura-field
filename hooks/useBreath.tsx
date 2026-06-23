@@ -11,9 +11,10 @@ import { useDerivedValue } from 'react-native-reanimated';
 /**
  * A slow breathing oscillator (0..1) for Skia visuals. Returns a Reanimated
  * shared value driven on the UI thread. When reduced motion is on, it stays at
- * a static mid value (no breathing).
+ * a static mid value (no breathing). `periodMs` sets the breath period so the
+ * tempo can be derived per session (e.g. a brainwave band's `tempoS`).
  */
-export function useBreath(reduced: boolean) {
+export function useBreath(reduced: boolean, periodMs = 4200) {
   const progress = useSharedValue(0.5);
 
   useEffect(() => {
@@ -22,13 +23,14 @@ export function useBreath(reduced: boolean) {
       progress.value = 0.5;
       return undefined;
     }
+    // withRepeat reverses, so a full breath in-and-out is two half-period legs.
     progress.value = withRepeat(
-      withTiming(1, { duration: 4200, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1, { duration: periodMs / 2, easing: Easing.inOut(Easing.sin) }),
       -1,
       true,
     );
     return () => cancelAnimation(progress);
-  }, [reduced, progress]);
+  }, [reduced, periodMs, progress]);
 
   return useDerivedValue(() => progress.value);
 }
