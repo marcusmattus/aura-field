@@ -10,13 +10,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: 'Aura Field',
-    slug: 'aura-field',
+    name: 'chakraOS',
+    slug: 'chakraos',
     newArchEnabled: true,
     version: process.env.BILT_APP_VERSION ?? '1.0.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
-    scheme: 'aura-field',
+    scheme: 'chakraos',
     icon: './assets/icon.png',
     runtimeVersion: {
       policy: 'appVersion',
@@ -28,10 +28,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ITSAppUsesNonExemptEncryption: false,
       },
       supportsTablet: true,
-      bundleIdentifier: process.env.BILT_IOS_BUNDLE_ID ?? 'com.yourcompany.yourapp',
+      bundleIdentifier: process.env.BILT_IOS_BUNDLE_ID ?? 'com.yourcompany.chakraos',
     },
     android: {
-      package: process.env.BILT_ANDROID_PACKAGE ?? 'com.yourcompany.yourapp',
+      package: process.env.BILT_ANDROID_PACKAGE ?? 'com.yourcompany.chakraos',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#05060A',

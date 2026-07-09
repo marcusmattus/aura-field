@@ -1,6 +1,37 @@
-# Welcome to your Bilt project
+# chakraOS - AI-First Frequency Operating System
 
 [![Built with Bilt](https://img.shields.io/endpoint?url=https%3A%2F%2Fapp.bilt.me%2Fapi%2Fbadge)](https://bilt.me)
+
+> **chakraOS is not a meditation app. It is a generative Frequency Operating System where sound, visuals, AI coaching, progression and user experience emerge from a single procedural engine driven by frequency.**
+
+## 🌟 Core Principle
+
+**Everything derives from frequency.** No hardcoded colors, gradients, themes, or duplicate visual variants. The entire user experience emerges from a single procedural pipeline.
+
+## 🏗️ Architecture
+
+```
+Field State → Frequency Engine → Derived Experience
+    ↓              ↓                    ↓
+(baseHz,      (Session,             (Colors,
+ beatHz,       Colors,              Audio,
+ breath,       Audio,               Visuals,
+ coherence,    Brainwave,           XP,
+ energy,       Visualization,       Coach)
+ focus,        XP Multiplier,
+ stress,       Coach Rec)
+ emotion,
+ duration)
+```
+
+## ✨ Key Features
+
+- **🎵 Real-time Audio Synthesis**: Binaural beats and pure sine waves generated from react-native-audio-api
+- **🎨 Frequency Canvas**: Audio-reactive visualizations with particle systems responding to live frequency analysis
+- **🧘 Reactive Body Field**: Chakras glow and pulse based on active frequencies with OKLab color interpolation
+- **🤖 AI Frequency Coach**: Generates optimal frequencies dynamically instead of selecting preset sessions
+- **📈 Dynamic XP Engine**: Rewards based on actual physiological improvements (HRV, breathing coherence, mood)
+- **📦 Recipe Engine**: Procedural session generation from user context and field analysis
 
 ## Project info
 

@@ -1,6 +1,7 @@
 {
-  "name": "bilt-starter",
+  "name": "chakraos",
   "version": "1.0.0",
+  "description": "AI-first frequency operating system for wellness and consciousness",
   "main": "expo-router/entry",
   "scripts": {
     "android": "expo run:android",
