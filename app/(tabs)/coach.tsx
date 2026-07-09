@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { PenLine, Send, Waves, Wind } from 'lucide-react-native';
+import { PenLine, Send, Waves, Wind, Radio, Brain } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -14,7 +14,10 @@ import { Text } from 'heroui-native';
 import { Display, FadeIn, LockOverlay, Mono, Panel } from '@/components/ui';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
-import type { CoachMessage, Protocol } from '@/lib/types';
+import { useFrequencyAudio } from '@/lib/audio-engine';
+import { FrequencyEngine } from '@/lib/frequency';
+import { frequencyCoachRespond, type FrequencyProtocol } from '@/lib/agents/frequency-coach';
+import type { CoachMessage } from '@/lib/types';
 
 const ACCENT = SURFACE_ACCENT.coach;
 
@@ -44,13 +47,27 @@ export default function CoachScreen() {
     setText('');
   };
 
-  const onProtocol = (p: Protocol) => {
-    if (p.type === 'sound' && p.chakra) {
-      router.push({ pathname: '/session', params: { chakra: p.chakra } });
+  // Audio management for inline frequency protocols
+  const { start: startAudio, stop: stopAudio, isPlaying } = useFrequencyAudio();
+
+  const onProtocol = async (p: FrequencyProtocol) => {
+    if (p.type === 'frequency' && p.fieldState) {
+      try {
+        const engineOutput = FrequencyEngine(p.fieldState);
+        await startAudio(engineOutput.audio, p.fieldState.duration);
+      } catch (error) {
+        console.error('Failed to start frequency session:', error);
+        // Fall back to navigation
+        router.push('/sound');
+      }
     } else if (p.type === 'reflect') {
       router.push({ pathname: '/journal', params: { seed: p.chakra ?? '' } });
     } else if (p.type === 'breath' && p.chakra) {
-      router.push({ pathname: '/session', params: { chakra: p.chakra, mode: 'breath' } });
+      // TODO: Implement breathing protocol
+      router.push({ pathname: '/journal', params: { seed: 'breath' } });
+    } else {
+      // Fallback to sound screen
+      router.push('/sound');
     }
   };
 
@@ -166,14 +183,15 @@ function MessageBubble({
   );
 }
 
-function ProtocolCard({ protocol, onPress }: { protocol: Protocol; onPress: () => void }) {
-  const Icon = protocol.type === 'sound' ? Waves : protocol.type === 'breath' ? Wind : PenLine;
-  const color =
-    protocol.type === 'sound'
+function ProtocolCard({ protocol, onPress }: { protocol: FrequencyProtocol; onPress: () => void }) {
+  const Icon = protocol.type === 'frequency' ? Radio : protocol.type === 'breath' ? Wind : PenLine;
+  const color = protocol.color || (
+    protocol.type === 'frequency'
       ? SURFACE_ACCENT.sound
       : protocol.type === 'breath'
         ? SURFACE_ACCENT.body
-        : SURFACE_ACCENT.journal;
+        : SURFACE_ACCENT.journal
+  );
   return (
     <Pressable onPress={onPress}>
       <Panel className="flex-row items-center gap-3 p-3">

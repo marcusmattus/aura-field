@@ -11,6 +11,32 @@ export type ChakraKey =
   | 'root'
   | 'earth';
 
+/**
+ * FieldState — The core state that drives everything in chakraOS.
+ * Every visual, sound, animation, recommendation and experience
+ * is procedurally generated from this state instead of static assets.
+ */
+export interface FieldState {
+  /** Base frequency in Hz (174-1074 anchored on chakra nodes) */
+  baseHz: number;
+  /** Binaural beat offset in Hz (null for pure drone) */
+  beatHz: number | null;
+  /** Breathing rate/coherence (0-100) */
+  breath: number;
+  /** Heart rate variability coherence (0-100) */
+  coherence: number;
+  /** Overall energy level (0-100) */
+  energy: number;
+  /** Mental focus clarity (0-100) */
+  focus: number;
+  /** Stress level (0-100, inverted) */
+  stress: number;
+  /** Emotional state (-100 to 100, negative=heavy, positive=light) */
+  emotion: number;
+  /** Session duration in seconds */
+  duration: number;
+}
+
 export type SurfaceKey = 'body' | 'journal' | 'coach' | 'sound' | 'you';
 
 export interface Chakra {

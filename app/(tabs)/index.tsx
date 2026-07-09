@@ -1,16 +1,18 @@
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { Sparkles } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { Sparkles, Radio, Zap } from 'lucide-react-native';
+import { useMemo, useState, useEffect } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
 
 import { AuraSigil } from '@/components/AuraSigil';
-import { BodyField } from '@/components/BodyField';
+import { ReactiveBodyField } from '@/components/ReactiveBodyField';
 import { Chip, Display, Mono, Panel, SoftFade } from '@/components/ui';
 import { todaysObservation } from '@/lib/agents/oracle';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
+import { getAudioManager } from '@/lib/audio-engine';
+import { frequencyToColor } from '@/lib/sound';
 import type { ChakraKey } from '@/lib/types';
 
 export default function BodyScreen() {
@@ -18,9 +20,41 @@ export default function BodyScreen() {
   const { width } = useWindowDimensions();
   const states = useChakraStore((s) => s.states);
   const fieldIndex = useChakraStore((s) => s.fieldIndex);
+  
+  // Audio session monitoring
+  const [activeFrequency, setActiveFrequency] = useState<number | undefined>();
+  const [beatHz, setBeatHz] = useState<number | undefined>();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showFrequencyOverlay, setShowFrequencyOverlay] = useState(false);
 
   const observation = useMemo(() => todaysObservation(states), [states]);
   const fieldWidth = Math.min(width - 32, 360);
+  
+  // Monitor active audio session
+  useEffect(() => {
+    const checkAudioSession = () => {
+      const audioManager = getAudioManager();
+      const session = audioManager.getCurrentSession();
+      
+      if (session) {
+        setIsPlaying(true);
+        // In a real implementation, we'd extract these from the session
+        // For now, we'll set some default values when audio is playing
+        setActiveFrequency(639); // Heart chakra as default
+        setBeatHz(8); // Alpha waves as default
+      } else {
+        setIsPlaying(false);
+        setActiveFrequency(undefined);
+        setBeatHz(undefined);
+      }
+    };
+    
+    // Check immediately and then periodically
+    checkAudioSession();
+    const interval = setInterval(checkAudioSession, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const onSelectNode = (key: ChakraKey) => {
     router.push({ pathname: '/inspector/[chakra]', params: { chakra: key } });
@@ -32,6 +66,10 @@ export default function BodyScreen() {
     } else {
       router.push('/coach');
     }
+  };
+  
+  const toggleFrequencyOverlay = () => {
+    setShowFrequencyOverlay(!showFrequencyOverlay);
   };
 
   return (
@@ -63,8 +101,46 @@ export default function BodyScreen() {
       </View>
 
       <View className="mt-4 items-center">
-        <BodyField states={states} width={fieldWidth} onSelectNode={onSelectNode} />
+        <ReactiveBodyField 
+          states={states} 
+          width={fieldWidth} 
+          onSelectNode={onSelectNode}
+          activeFrequency={activeFrequency}
+          beatHz={beatHz}
+          isPlaying={isPlaying}
+          showFrequencyOverlay={showFrequencyOverlay}
+        />
       </View>
+
+      {/* Active Session Indicator */}
+      {isPlaying && activeFrequency && (
+        <View className="mt-2 px-4">
+          <SoftFade>
+            <Panel className="p-3 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-3">
+                <View 
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: frequencyToColor(activeFrequency) }}
+                />
+                <View>
+                  <Text className="font-mono-bold" style={{ fontSize: 12, color: '#fff' }}>
+                    FREQUENCY ACTIVE
+                  </Text>
+                  <Text className="text-faint font-mono" style={{ fontSize: 10 }}>
+                    {activeFrequency} Hz {beatHz ? `· ${beatHz} Hz binaural` : ''}
+                  </Text>
+                </View>
+              </View>
+              <Pressable onPress={toggleFrequencyOverlay}>
+                <Radio 
+                  size={16} 
+                  color={showFrequencyOverlay ? frequencyToColor(activeFrequency) : '#666'} 
+                />
+              </Pressable>
+            </Panel>
+          </SoftFade>
+        </View>
+      )}
 
       <View className="mt-2 px-4">
         <SoftFade>

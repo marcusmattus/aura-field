@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { analyzeEntry } from '@/lib/agents/awareness';
 import { coachRespond, type CoachReply } from '@/lib/agents/coach';
+import { frequencyCoachRespond, type FrequencyCoachReply } from '@/lib/agents/frequency-coach';
 import { computeFieldIndex, recomputeField } from '@/lib/agents/field';
 import { detectBreakthroughs } from '@/lib/agents/oracle';
 import { remoteAnalyze, remoteCoach } from '@/lib/agents/remote';
@@ -249,12 +250,22 @@ export const useChakraStore = create<ChakraOSState>()(
         const { states, entries } = get();
         const distress = analyzeEntry(text, 'text').distress;
 
-        let reply: CoachReply = coachRespond({ userText: text, states, entries, distress, now });
+        // Use new frequency coach as primary, with fallback to legacy coach
+        let reply: FrequencyCoachReply = frequencyCoachRespond({ userText: text, states, entries, distress, now });
+        
+        // Try remote enhancement
         try {
           const remote = await remoteCoach({ userText: text, states, entries, distress });
-          if (remote) reply = remote;
+          if (remote) {
+            // Merge remote insights with frequency coaching
+            reply = {
+              ...reply,
+              content: `${reply.content}\n\n${remote.content}`,
+              protocols: [...reply.protocols, ...remote.protocols.map(p => ({ ...p, type: p.type as any }))]
+            };
+          }
         } catch {
-          // keep deterministic reply
+          // Keep generated frequency reply
         }
 
         const coachMsg: CoachMessage = {
@@ -262,7 +273,7 @@ export const useChakraStore = create<ChakraOSState>()(
           role: 'coach',
           content: reply.content,
           createdAt: Date.now(),
-          protocols: reply.protocols,
+          protocols: reply.protocols as any[], // Type compatibility
         };
         set((s) => ({ coachMessages: [...s.coachMessages, coachMsg] }));
       },
