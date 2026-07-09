@@ -6,6 +6,7 @@ import { Alert, Platform, Pressable, ScrollView, useWindowDimensions, View } fro
 import { Text } from 'heroui-native';
 
 import { AuraSigil } from '@/components/AuraSigil';
+import { AuthSettings } from '@/components/AuthSettings';
 import { FadeIn, Mono, Panel, SoftFade, Voice } from '@/components/ui';
 import { SURFACE_ACCENT, CHAKRA_BY_KEY } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
@@ -241,15 +242,10 @@ export default function YouScreen() {
         </View>
       </View>
 
+      {/* Authentication Settings */}
       <View className="mt-6 px-4">
-        <Pressable onPress={onSignOut}>
-          <Panel className="flex-row items-center justify-center gap-2 p-4">
-            <LogOut color="#8a90a6" size={15} />
-            <Text className="text-mute font-mono" style={{ fontSize: 12, letterSpacing: 1 }}>
-              SIGN OUT
-            </Text>
-          </Panel>
-        </Pressable>
+        <Mono className="mb-3">ACCOUNT & SETTINGS</Mono>
+        <AuthSettings />
       </View>
 
       <View className="mt-6 px-4">
