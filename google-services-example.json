@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "123456789012",
+    "project_id": "chakraos-prod",
+    "storage_bucket": "chakraos-prod.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789012:android:abcd1234efgh5678",
+        "android_client_info": {
+          "package_name": "com.yourcompany.chakraos"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "123456789012-abcdefghijklmnop.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yourcompany.chakraos",
+            "certificate_hash": "abcdefghijklmnopqrstuvwxyz123456"
+          }
+        },
+        {
+          "client_id": "123456789012-web-client-id.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-example-api-key-replace-with-real"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "123456789012-web-client-id.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "123456789012-ios-client-id.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.yourcompany.chakraos"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

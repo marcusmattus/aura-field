@@ -34,6 +34,7 @@ import {
 import { initPostHog } from '@/lib/posthog';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
 import { useChakraStore } from '@/lib/store';
+import { initializeFirebase } from '@/lib/firebase-config';
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -172,6 +173,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web') {
       initPostHog();
+    }
+    
+    // Initialize Firebase for authentication
+    if (Platform.OS !== 'web') {
+      initializeFirebase().catch(console.warn);
     }
   }, []);
 
