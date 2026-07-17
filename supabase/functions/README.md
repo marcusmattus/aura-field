@@ -1,30 +1,32 @@
-# chakraOS — Supabase Edge Functions (the five agents)
+# chakraOS — Supabase Edge Functions
 
-Each agent is a Deno Edge Function that wraps the Anthropic API
-(`claude-sonnet-4-6`) with a strict JSON contract. The mobile client
-(`lib/agents/remote.ts`) calls them through `supabase.functions.invoke`.
+Provider-agnostic agents. Mobile client calls via `lib/db/invokeFunction` or `supabase.functions.invoke`.
+
+## Functions
+
+| Name | Purpose |
+|------|---------|
+| `ai-chat` | Streaming SSE coach (`stream: true`) or JSON `{ ok, content }` |
+| `ai-embed` | OpenAI embeddings; optional `match` via `match_memory_items`; optional persist |
+| `transcribe-voice` | Whisper + theme summary; updates journal/voice_notes |
+| `reflect` | Reflection JSON → `reflection_summaries` + `memory_items` + `chakra_scores` |
+| `journal-analyze` | Legacy journal tagger (Anthropic JSON) |
+| `coach-respond` | Legacy coach JSON (Anthropic) |
 
 ## Design contract
 
-- **JSON in / JSON out**, validated.
-- Every function returns `{ ok: boolean, ... }`. When `ok` is `false`
-  (no API key, parse failure, refusal), the client silently uses its
-  on-device deterministic core. The UI never stalls or blanks.
-- The journal is sacred data: `coach-respond` receives only aggregate
-  field state + theme summaries, never raw entry bodies in bulk.
-- Every system prompt forbids diagnosis/treatment and enforces an
-  observational, non-clinical voice with an explicit crisis hand-off.
+- Prefer `{ ok: boolean, ... }`. On failure the client falls back to on-device agents.
+- Every system prompt includes non-diagnostic / crisis guardrails (`_shared/agent.ts`).
+- Provider selected by request `provider` or `AI_PROVIDER` env (`anthropic` | `openai`).
 
 ## Deploy
 
-1. Set the Anthropic key as a function secret:
-   ```sh
-   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   ```
-2. Deploy:
-   ```sh
-   supabase functions deploy journal-analyze coach-respond
-   ```
+```sh
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+supabase secrets set OPENAI_API_KEY=sk-...
+supabase secrets set AI_PROVIDER=anthropic
 
-Until a key is set the app runs entirely on the deterministic agents in
-`lib/agents/*` — the journal→field loop closes with no backend at all.
+supabase functions deploy ai-chat ai-embed transcribe-voice reflect journal-analyze coach-respond
+```
+
+Until keys are set, the app still runs with deterministic agents in `lib/agents/*`.

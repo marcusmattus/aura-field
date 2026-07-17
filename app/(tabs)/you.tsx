@@ -89,9 +89,18 @@ export default function YouScreen() {
               </Text>
             ) : null}
           </View>
-          <Pressable hitSlop={10} onPress={() => router.push('/profile-setup')}>
-            <Settings color="#8a90a6" size={20} />
-          </Pressable>
+          <View className="flex-row items-center gap-3">
+            <Pressable
+              onPress={() => router.push('/check-in')}
+              className="rounded-full px-3 py-1.5"
+              style={{ backgroundColor: ACCENT }}
+            >
+              <Mono style={{ color: '#0a0e18' }}>CHECK-IN</Mono>
+            </Pressable>
+            <Pressable hitSlop={10} onPress={() => router.push('/profile-setup')}>
+              <Settings color="#8a90a6" size={20} />
+            </Pressable>
+          </View>
         </View>
       </View>
 

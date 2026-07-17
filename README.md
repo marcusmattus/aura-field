@@ -1,160 +1,119 @@
-# Welcome to your Bilt project
+# ChakraOS (Aura Field)
 
-[![Built with Bilt](https://img.shields.io/endpoint?url=https%3A%2F%2Fapp.bilt.me%2Fapi%2Fbadge)](https://bilt.me)
+AI-powered consciousness OS for reflection, daily alignment, journaling, frequency sessions, and emotionally intelligent coaching.
 
-## Project info
+## Stack
 
-**Preview URL**: https://app.bilt.me/project/8edef0d5-e41f-4af5-8a12-744084a5748d/preview
+- **Mobile:** Expo SDK 54 · React Native · Expo Router · TypeScript · Uniwind · Skia · Reanimated · Zustand · React Query · MMKV
+- **Backend:** Supabase (Auth, Postgres, Storage, Edge Functions, Realtime, RLS, pgvector)
+- **AI:** Provider abstraction (Anthropic + OpenAI) via Edge Functions — never hardcode providers in the UI
 
-**Project ID**: `8edef0d5-e41f-4af5-8a12-744084a5748d`
+## Cloud-first vertical slice
 
-## How can I edit this app?
+Auth → Daily check-in → Journal (voice + Whisper) → Streaming coach + memory → Frequency session → Chakra score update.
 
-There are several ways of editing your application.
+```
+Auth ──► Check-in ──► Journal ──► Embed/Memory ──► Streaming Coach
+                         │                              │
+                         └──► Chakra scores ◄── Frequency session
+```
 
-**Use Bilt**
+## Environment
 
-Simply visit your [Bilt Project](https://app.bilt.me/agent/8edef0d5-e41f-4af5-8a12-744084a5748d) and start sending messages. Describe what you want to change, add, or fix in natural language.
+Create `.env` (or EAS secrets):
 
-Changes made via Bilt are instant - just send a message and your app updates.
+```bash
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+```
 
-**Use your preferred IDE**
+Edge Function secrets:
 
-If you want to work locally using your own IDE, you can export the source code from Bilt and make changes directly.
+```bash
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+supabase secrets set OPENAI_API_KEY=sk-...
+supabase secrets set AI_PROVIDER=anthropic   # or openai
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Database
 
-Follow these steps:
+```bash
+supabase db push
+# or
+supabase migration up
+```
 
-```sh
-# Step 1: Export and clone your Bilt project.
-# (Download source from Bilt or connect to your git repo)
-git clone <YOUR_GIT_URL>
+Schema lives in [`supabase/migrations/20260717000001_chakraos_schema.sql`](supabase/migrations/20260717000001_chakraos_schema.sql):
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+profiles, user_preferences, daily_checkins, journal_entries, voice_notes, conversations, conversation_messages, memory_items (pgvector), chakra_scores, sound_library, frequency_sessions, meditation_sessions, reflection_summaries, analytics_events + RLS + voice-notes storage bucket.
 
-# Step 3: Install the necessary dependencies.
+## Edge Functions
+
+```bash
+supabase functions deploy journal-analyze coach-respond ai-chat ai-embed transcribe-voice reflect
+```
+
+| Function | Role |
+|----------|------|
+| `ai-chat` | Streaming / non-streaming coach (provider-agnostic) |
+| `ai-embed` | Embeddings + optional pgvector match / memory persist |
+| `transcribe-voice` | Whisper transcription + theme extraction |
+| `reflect` | Reflection summary → memory + chakra score deltas |
+| `journal-analyze` / `coach-respond` | Legacy deterministic-friendly agents (still used as fallbacks) |
+
+## Auth
+
+Supported:
+
+- Email + password + OTP verification
+- Passwordless OTP code
+- Magic link (`aura-field://auth/callback`)
+- Apple / Google OAuth via Supabase (enable providers in dashboard; configure redirect URLs)
+
+Session tokens persist via **MMKV** when available, else AsyncStorage. Cold start calls `restoreSession()`.
+
+### Native OAuth notes
+
+- Enable Apple / Google in Supabase Auth settings
+- Add redirect URL: `aura-field://auth/callback`
+- iOS: Apple Sign In capability required for production Apple OAuth
+- Google: configure iOS/Android client IDs in Supabase
+
+## Frequency engine
+
+[`lib/frequency/`](lib/frequency/) is the single source of truth:
+
+- Registry of 9 nodes (Earth → Soul) with base + beat Hz
+- `colorFromFrequency(hz, beatHz)` derives colour, gradient, glow, visualizer pulse — **no hardcoded session colours as authority**
+- Oscillator tones via [`lib/tone.ts`](lib/tone.ts)
+
+## Local development
+
+```bash
 npm install
-
-# Step 4: Start the Expo development server.
+npm run typecheck
+npm run test
+npm run lint
 npx expo start
 ```
 
-Scan the QR code with Expo Go on your phone to see your app running locally.
+## EAS / production build
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- React Native
-- Expo
-- TypeScript
-- AsyncStorage (local data persistence)
-- Expo Router (navigation)
-
-All generated automatically by Bilt from your natural language instructions.
-
-## How can I test this project?
-
-**Option 1: Instant Preview (Recommended)**
-
-Open the preview URL in your browser: `https://app.bilt.me/project/8edef0d5-e41f-4af5-8a12-744084a5748d/preview`
-
-Scan the QR code with Expo Go ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent)) on your phone.
-
-**Option 2: Run Locally**
-
-```sh
-npm install
-npx expo start
+```bash
+npx eas build --platform ios
+npx eas build --platform android
 ```
 
-Then scan the QR code with Expo Go.
+Ensure `app.config.ts` bundle IDs and splash assets are set for your org before App Store submission.
 
-## How can I deploy this project?
+## Privacy & safety
 
-Go to your [Bilt Project](https://app.bilt.me/agent/8edef0d5-e41f-4af5-8a12-744084a5748d), after that go to Settings -> App Store.
+- RLS on every user table (`auth.uid() = user_id`)
+- API keys only on Edge Functions
+- Coach prompts forbid diagnosis / medical advice and include crisis hand-off (e.g. 988)
+- Journals sync to the user’s private cloud row — not shared across users
 
-### Deploy with Bilt
+## Tests & CI
 
-Simply send a message to your Bilt project: "Deploy this app to production"
-
-Bilt will handle the build and provide you with download links or submission-ready builds.
-
-## How can I make changes to my app?
-
-**Via Bilt (Easiest)**
-
-Visit your [Bilt Project](https://app.bilt.me/agent/8edef0d5-e41f-4af5-8a12-744084a5748d) and send a message describing what you want:
-
-- "Add a dark mode toggle"
-- "Change the button color to blue"
-- "Add a new screen for user settings"
-- "Fix the navigation bar spacing"
-
-Bilt understands natural language and updates your app automatically.
-
-**Via Code**
-
-Export the source, make changes in your IDE, and test locally with `npx expo start`.
-
-## Can I use this with the MCP protocol?
-
-Yes! Bilt is available as a remote MCP server at `https://mcp.bilt.me/mcp`.
-
-Connect any MCP-compatible AI agent (Claude Desktop, OpenClaw, etc.) to programmatically build and modify mobile apps.
-
-**Example MCP integration:**
-
-```json
-{
-  "mcpServers": {
-    "bilt": {
-      "transport": {
-        "type": "sse",
-        "url": "https://mcp.bilt.me/mcp/sse",
-        "headers": {
-          "Authorization": "Bearer YOUR_API_KEY"
-        }
-      }
-    }
-  }
-}
-```
-
-Read more:
-
-- [Bilt MCP Documentation](https://bilt.me/docs)
-- [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.buildingapplications%2Fmcp/versions/latest)
-
-## Need help?
-
-- 📚 [Bilt Documentation](https://bilt.me/docs)
-- 💬 [Discord Community](https://discord.gg/3FqNgmSYdZ)
-- 🐦 [Twitter Updates](https://twitter.com/biltmeanapp)
-- 📧 Email: support@bilt.me
-
----
-
-<div align="center">
-
-**Built by AI. No code required.** ✨
-
-[Try Bilt](https://bilt.me) • [View Docs](https://bilt.me/docs) • [Docs MCP Server](https://bilt.me/docs/mcp)
-
-</div>
+- Vitest unit tests: frequency→colour, field index, provider factory, edge payload shapes
+- GitHub Actions: `typecheck` + `test` + `lint` on push/PR
