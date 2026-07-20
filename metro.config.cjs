@@ -255,14 +255,22 @@ config.server = {
   },
 };
 
-// Stub out react-native-maps when running in Expo Go (no native module available)
-// In dev builds with EXPO_PLATFORM=native, the real module is used.
+// Expo Go / non-dev-client: stub native-only modules that are not in the Go client
+// (or are unsafe landmines). Dev builds set EXPO_PLATFORM=native via eas.json.
 if (process.env.EXPO_PLATFORM !== 'native') {
+  const expoGoNativeStubs = new Set([
+    'react-native-maps',
+    'react-native-mmkv',
+    'react-native-nitro-modules',
+  ]);
+
+  const upstreamResolveRequest = config.resolver.resolveRequest;
   config.resolver.resolveRequest = (context, moduleName, platform) => {
-    if (moduleName === 'react-native-maps') {
-      return {
-        type: 'empty',
-      };
+    if (expoGoNativeStubs.has(moduleName)) {
+      return { type: 'empty' };
+    }
+    if (typeof upstreamResolveRequest === 'function') {
+      return upstreamResolveRequest(context, moduleName, platform);
     }
     return context.resolveRequest(context, moduleName, platform);
   };

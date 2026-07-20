@@ -1,5 +1,3 @@
-import { posthog } from 'posthog-js';
-
 /*
  * Initialize PostHog for the web template.
  * This is used to track events and sessions for the web template.
@@ -14,12 +12,19 @@ export function initPostHog(): void {
   const host = params.get('__ph_host');
   if (!key || !host) return;
 
-  posthog.init(key, {
-    api_host: host,
-    autocapture: false,
-    capture_pageview: false,
-    capture_pageleave: false,
-    disable_session_recording: false,
-    session_recording: {},
-  });
+  // Lazy-load so Expo Go / native never evaluate the web SDK at import time.
+  void import('posthog-js')
+    .then(({ posthog }) => {
+      posthog.init(key, {
+        api_host: host,
+        autocapture: false,
+        capture_pageview: false,
+        capture_pageleave: false,
+        disable_session_recording: false,
+        session_recording: {},
+      });
+    })
+    .catch(() => {
+      // Preview iframe / missing SDK — ignore.
+    });
 }
