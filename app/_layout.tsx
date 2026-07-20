@@ -98,6 +98,32 @@ Uniwind.setTheme('dark');
 
 void SplashScreen.preventAutoHideAsync();
 
+/**
+ * Must render under QueryClientProvider — useAccessGate → useCloudHydration uses useQuery.
+ */
+function RootNavigator({ navigatorReady }: { navigatorReady: boolean }) {
+  useAccessGate(navigatorReady);
+
+  return (
+    <HeroUINativeProvider>
+      <Stack screenOptions={{ contentStyle: { backgroundColor: '#0a0e18' } }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen name="auth" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+        <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
+        <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="check-in" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen
+          name="inspector/[chakra]"
+          options={{ presentation: 'modal', headerShown: false }}
+        />
+        <Stack.Screen name="session" options={{ presentation: 'modal', headerShown: false }} />
+      </Stack>
+    </HeroUINativeProvider>
+  );
+}
+
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
   const [loaded, error] = useFonts({
@@ -214,7 +240,6 @@ export default function RootLayout() {
   // that so we never call router.replace before the Root Layout has rendered a
   // navigator (which throws "Attempted to navigate before mounting...").
   const navigatorReady = loaded || Boolean(error);
-  useAccessGate(navigatorReady);
 
   if (!loaded && !error) {
     return null;
@@ -223,22 +248,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        <HeroUINativeProvider>
-          <Stack screenOptions={{ contentStyle: { backgroundColor: '#0a0e18' } }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="auth" options={{ headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-            <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
-            <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen name="check-in" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen
-              name="inspector/[chakra]"
-              options={{ presentation: 'modal', headerShown: false }}
-            />
-            <Stack.Screen name="session" options={{ presentation: 'modal', headerShown: false }} />
-          </Stack>
-        </HeroUINativeProvider>
+        <RootNavigator navigatorReady={navigatorReady} />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
