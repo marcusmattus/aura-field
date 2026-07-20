@@ -104,8 +104,16 @@ Open the JS bundle in the Expo Go app (SDK 54):
 npm run start:go:tunnel
 ```
 
-Scan the QR code with Expo Go (Camera on iOS, Expo Go on Android).  
-MMKV falls back to AsyncStorage in Expo Go. Custom native modules that are not in Expo Go require a **development build** instead.
+This starts Metro and a Cloudflare tunnel, then prints an `exp://…` URL.  
+Open that URL in **Expo Go** (SDK 54) — Camera on iOS, or “Enter URL” on Android.
+
+If you are logged into Expo (`npx eas login` / `EXPO_TOKEN`), you can also use Expo’s built-in tunnel:
+
+```bash
+npx expo start --go --tunnel
+```
+
+MMKV falls back to AsyncStorage in Expo Go. Full native features (custom native modules / production parity) need a **development build** instead.
 
 ### Development build (recommended for full native)
 
