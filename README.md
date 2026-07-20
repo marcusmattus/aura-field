@@ -104,14 +104,8 @@ Open the JS bundle in the Expo Go app (SDK 54):
 npm run start:go:tunnel
 ```
 
-This starts Metro and a Cloudflare tunnel, then prints an `exp://…` URL.  
-Open that URL in **Expo Go** (SDK 54) — Camera on iOS, or “Enter URL” on Android.
-
-If you are logged into Expo (`npx eas login` / `EXPO_TOKEN`), you can also use Expo’s built-in tunnel:
-
-```bash
-npx expo start --go --tunnel
-```
+This runs `expo start --go --tunnel` (Expo’s built-in **ngrok** tunnel) and prints a QR / `exp://…` URL.  
+Open that in **Expo Go** (SDK 54) — Camera on iOS, or “Enter URL” on Android.
 
 MMKV falls back to AsyncStorage in Expo Go. Full native features (custom native modules / production parity) need a **development build** instead.
 
