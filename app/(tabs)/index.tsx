@@ -48,15 +48,24 @@ export default function BodyScreen() {
               {format(new Date(), 'd MMM').toLowerCase()}
             </Display>
           </View>
-          <View className="items-end">
-            <Mono>FIELD INDEX</Mono>
-            <View className="mt-1 flex-row items-baseline">
-              <Text className="font-mono-bold" style={{ fontSize: 30, color: SURFACE_ACCENT.body }}>
-                {fieldIndex}
-              </Text>
-              <Text className="text-faint font-mono" style={{ fontSize: 12 }}>
-                /100
-              </Text>
+          <View className="items-end gap-2">
+            <Pressable
+              onPress={() => router.push('/check-in')}
+              className="rounded-full px-3 py-1.5"
+              style={{ backgroundColor: SURFACE_ACCENT.body }}
+            >
+              <Mono style={{ color: '#0a0e18' }}>CHECK-IN</Mono>
+            </Pressable>
+            <View className="items-end">
+              <Mono>FIELD INDEX</Mono>
+              <View className="mt-1 flex-row items-baseline">
+                <Text className="font-mono-bold" style={{ fontSize: 30, color: SURFACE_ACCENT.body }}>
+                  {fieldIndex}
+                </Text>
+                <Text className="text-faint font-mono" style={{ fontSize: 12 }}>
+                  /100
+                </Text>
+              </View>
             </View>
           </View>
         </View>

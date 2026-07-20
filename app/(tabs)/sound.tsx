@@ -7,7 +7,8 @@ import { Text } from 'heroui-native';
 import { SoundVisualizer } from '@/components/SoundVisualizer';
 import { Chip, Display, LockOverlay, Mono, Panel } from '@/components/ui';
 import { suggestSession } from '@/lib/agents/coach';
-import { CHAKRAS, SURFACE_ACCENT } from '@/lib/chakras';
+import { SURFACE_ACCENT } from '@/lib/chakras';
+import { buildSoundLibrarySessions, paletteForKey } from '@/lib/frequency';
 import { useChakraStore } from '@/lib/store';
 
 const ACCENT = SURFACE_ACCENT.sound;
@@ -20,6 +21,8 @@ export default function SoundScreen() {
   const subscribed = useChakraStore((s) => s.subscribed);
 
   const suggested = useMemo(() => suggestSession(states), [states]);
+  const library = useMemo(() => buildSoundLibrarySessions(), []);
+  const suggestedPalette = paletteForKey(suggested.chakra);
 
   return (
     <View className="bg-field flex-1">
@@ -46,7 +49,11 @@ export default function SoundScreen() {
         <View className="mt-4 px-4">
           <Mono className="mb-2">SUGGESTED FOR YOU NOW</Mono>
           <Panel className="items-center p-5">
-            <SoundVisualizer size={Math.min(width - 120, 200)} color={ACCENT} playing={false} />
+            <SoundVisualizer
+              size={Math.min(width - 120, 200)}
+              color={suggestedPalette.color}
+              playing={false}
+            />
             <Display size={20} className="mt-3">
               {suggested.title}
             </Display>
@@ -55,12 +62,12 @@ export default function SoundScreen() {
             </Text>
             <View className="mt-3 flex-row flex-wrap justify-center gap-2">
               {suggested.tags.map((t) => (
-                <Chip key={t} label={t} color={ACCENT} />
+                <Chip key={t} label={t} color={suggestedPalette.color} />
               ))}
             </View>
             <Pressable
               className="mt-4 flex-row items-center gap-2 rounded-full px-6 py-3"
-              style={{ backgroundColor: ACCENT }}
+              style={{ backgroundColor: suggestedPalette.color }}
               onPress={() =>
                 router.push({ pathname: '/session', params: { chakra: suggested.chakra } })
               }
@@ -79,10 +86,10 @@ export default function SoundScreen() {
             <Mono>{sessions.length} PLAYED</Mono>
           </View>
           <View className="gap-2">
-            {CHAKRAS.map((c) => (
+            {library.map((c) => (
               <Pressable
                 key={c.key}
-                onPress={() => router.push({ pathname: '/session', params: { chakra: c.key } })}
+                onPress={() => router.push({ pathname: '/session', params: { chakra: c.chakra } })}
               >
                 <Panel className="flex-row items-center gap-3 p-3">
                   <View
@@ -99,10 +106,10 @@ export default function SoundScreen() {
                       className="text-ink"
                       style={{ fontFamily: 'Inter_500Medium', fontSize: 14 }}
                     >
-                      {c.name} Restoration
+                      {c.title}
                     </Text>
                     <Text className="text-faint font-mono" style={{ fontSize: 10 }}>
-                      {c.solfeggioHz} HZ · {c.noteName} · {c.bija.toUpperCase()}
+                      {c.hz} HZ · beat {c.beatHz} · {c.brainwaveBand}
                     </Text>
                   </View>
                   <Play color={c.color} size={15} />

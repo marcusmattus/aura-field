@@ -8,7 +8,17 @@ import { computeFieldIndex, recomputeField } from '@/lib/agents/field';
 import { detectBreakthroughs } from '@/lib/agents/oracle';
 import { remoteAnalyze, remoteCoach } from '@/lib/agents/remote';
 import { CHAKRA_ORDER } from '@/lib/chakras';
-import { fetchProfile, saveProfile, signOutUser } from '@/lib/supabase';
+import {
+  createJournalEntry,
+  insertChakraScores,
+  invokeFunction,
+  recordFrequencySession,
+  trackAnalytics,
+  uploadVoiceNote,
+} from '@/lib/db';
+import { FREQUENCY_BY_KEY } from '@/lib/frequency/registry';
+import { fetchProfile, hasBackend, saveProfile, signOutUser, supabase } from '@/lib/supabase';
+import { enqueueOutbox } from '@/lib/sync/outbox';
 import type {
   Breakthrough,
   ChakraKey,
@@ -60,6 +70,9 @@ interface ChakraOSState {
   intention: Intention;
 
   // actions
+  setCoachMessages: (messages: CoachMessage[]) => void;
+  syncEntriesFromCloud: (entries: JournalEntry[]) => void;
+  applyCloudScores: (scores: Record<string, { score: number; trend7d: number }>) => void;
   addEntry: (
     body: string,
     modality: Modality,
@@ -72,6 +85,8 @@ interface ChakraOSState {
     chakra: ChakraKey;
     hz: number;
     durationS: number;
+    beatHz?: number;
+    brainwaveBand?: string;
   }) => void;
   setIntention: (text: string) => void;
   completeOnboarding: () => void;
@@ -163,6 +178,22 @@ export const useChakraStore = create<ChakraOSState>()(
         startedAt: Date.now(),
       },
 
+      setCoachMessages: (messages) => set({ coachMessages: messages }),
+
+      syncEntriesFromCloud: (entries) => {
+        set({ entries });
+        get().recompute();
+      },
+
+      applyCloudScores: (scores) => {
+        const states: ChakraState[] = CHAKRA_ORDER.map((key) => ({
+          key,
+          energy: scores[key]?.score ?? 50,
+          trend7d: scores[key]?.trend7d ?? 0,
+        }));
+        set({ states, fieldIndex: computeFieldIndex(states) });
+      },
+
       recompute: () => {
         const { entries, sessions } = get();
         const now = Date.now();
@@ -219,20 +250,100 @@ export const useChakraStore = create<ChakraOSState>()(
         }));
         get().recompute();
 
-        // try remote agent to enrich tags; reconcile if available
-        try {
-          const remote = await remoteAnalyze(body, modality, seededChakra);
-          if (remote) {
-            analysis = remote;
+        // Cloud-first persist
+        if (hasBackend) {
+          try {
+            let voicePath: string | undefined;
+            if (opts?.voiceUrl) {
+              voicePath = await uploadVoiceNote(opts.voiceUrl);
+            }
+            const row = await createJournalEntry({
+              body,
+              modality,
+              themes: analysis.themes,
+              tags: analysis.tags,
+              seededChakra,
+              voiceStoragePath: voicePath,
+              voiceDurationS: opts?.voiceDurationS,
+            });
+            // Replace temp id with cloud id
             set((s) => ({
-              entries: s.entries.map((e) =>
-                e.id === entry.id ? { ...e, tags: remote.tags, themes: remote.themes } : e,
-              ),
+              entries: s.entries.map((e) => (e.id === entry.id ? { ...e, id: row.id } : e)),
             }));
-            get().recompute();
+
+            if (voicePath) {
+              const { data: userData } = await supabase!.auth.getUser();
+              void invokeFunction('transcribe-voice', {
+                storagePath: voicePath,
+                journalEntryId: row.id,
+                userId: userData.user?.id,
+              });
+            }
+
+            const remote = await remoteAnalyze(body, modality, seededChakra);
+            if (remote) {
+              analysis = remote;
+              set((s) => ({
+                entries: s.entries.map((e) =>
+                  e.id === row.id ? { ...e, tags: remote.tags, themes: remote.themes } : e,
+                ),
+              }));
+              get().recompute();
+              const scoreMap = new Map<ChakraKey, number>();
+              for (const tag of remote.tags) {
+                const prev = scoreMap.get(tag.chakra) ?? 50;
+                scoreMap.set(tag.chakra, Math.min(100, prev + tag.weight * 12));
+              }
+              if (scoreMap.size) {
+                await insertChakraScores(
+                  [...scoreMap.entries()].map(([chakra, score]) => ({
+                    chakra,
+                    score,
+                    source: 'journal',
+                  })),
+                );
+              }
+            }
+
+            const { data: userData } = await supabase!.auth.getUser();
+            if (userData.user) {
+              void invokeFunction('reflect', {
+                userId: userData.user.id,
+                sourceType: 'journal',
+                sourceId: row.id,
+                content: body,
+                fieldScores: Object.fromEntries(get().states.map((s) => [s.key, s.energy])),
+                period: 'interaction',
+              });
+            }
+            void trackAnalytics('journal_created', { modality });
+          } catch {
+            await enqueueOutbox({
+              type: 'journal',
+              payload: {
+                body,
+                modality,
+                seededChakra,
+                voiceUrl: opts?.voiceUrl,
+                voiceDurationS: opts?.voiceDurationS,
+              },
+            });
           }
-        } catch {
-          // deterministic result already applied — never blank the screen
+        } else {
+          try {
+            const remote = await remoteAnalyze(body, modality, seededChakra);
+            if (remote) {
+              analysis = remote;
+              set((s) => ({
+                entries: s.entries.map((e) =>
+                  e.id === entry.id ? { ...e, tags: remote.tags, themes: remote.themes } : e,
+                ),
+              }));
+              get().recompute();
+            }
+          } catch {
+            // deterministic result already applied
+          }
         }
       },
 
@@ -267,7 +378,7 @@ export const useChakraStore = create<ChakraOSState>()(
         set((s) => ({ coachMessages: [...s.coachMessages, coachMsg] }));
       },
 
-      completeSession: ({ sessionKey, chakra, hz, durationS }) => {
+      completeSession: ({ sessionKey, chakra, hz, durationS, beatHz, brainwaveBand }) => {
         const session: CompletedSession = {
           id: uid(),
           sessionKey,
@@ -279,6 +390,39 @@ export const useChakraStore = create<ChakraOSState>()(
         const xp = get().xp + 40;
         set((s) => ({ sessions: [session, ...s.sessions], xp, level: levelForXp(xp) }));
         get().recompute();
+
+        const node = FREQUENCY_BY_KEY[chakra];
+        const beat = beatHz ?? node.beatFrequencyHz;
+        if (hasBackend) {
+          void recordFrequencySession({
+            chakra,
+            baseFrequencyHz: hz,
+            beatFrequencyHz: beat,
+            durationS,
+            brainwaveBand: brainwaveBand ?? node.brainwaveBand,
+          })
+            .then(async () => {
+              const bump = Math.min(100, (get().states.find((s) => s.key === chakra)?.energy ?? 50) + 4);
+              await insertChakraScores([{ chakra, score: bump, source: 'frequency_session' }]);
+              const { data: userData } = await supabase!.auth.getUser();
+              if (userData.user) {
+                void invokeFunction('reflect', {
+                  userId: userData.user.id,
+                  sourceType: 'session',
+                  content: `Completed ${chakra} frequency session at ${hz} Hz`,
+                  fieldScores: Object.fromEntries(get().states.map((s) => [s.key, s.energy])),
+                  period: 'interaction',
+                });
+              }
+              void trackAnalytics('frequency_session_completed', { chakra, hz });
+            })
+            .catch(() => {
+              void enqueueOutbox({
+                type: 'frequency_session',
+                payload: { chakra, hz, durationS, beatHz: beat },
+              });
+            });
+        }
       },
 
       setIntention: (text) => {

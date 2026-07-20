@@ -1,28 +1,29 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 import { createClient } from '@supabase/supabase-js';
+import * as WebBrowser from 'expo-web-browser';
 
+import { authStorage } from '@/lib/storage';
 import type { BaselineMood, ChakraKey, ExperienceLevel, UserProfile } from '@/lib/types';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
+WebBrowser.maybeCompleteAuthSession();
+
 /**
- * Supabase client. chakraOS keeps all journal/field data on-device; Supabase
- * hosts the agent Edge Functions (which call Claude) and now also backs the
- * login system + the user profile/wellbeing intake. The journal itself is
- * sacred data — entries never leave the device by default.
- *
- * Auth uses 6-digit email OTP codes (no magic links / redirect URLs). The
- * session is persisted through AsyncStorage so the user stays signed in.
+ * Supabase client — cloud-first.
+ * Journals, check-ins, conversations, and memory live in Postgres with RLS.
+ * Session tokens persist via MMKV when available, else AsyncStorage.
  */
 export const supabase =
   url && key
     ? createClient(url, key, {
         auth: {
-          storage: AsyncStorage,
+          storage: authStorage,
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: false,
+          flowType: 'pkce',
         },
       })
     : null;
@@ -123,9 +124,92 @@ export async function signInWithPassword(email: string, password: string): Promi
 /** Passwordless sign-in: emails a 6-digit code (no magic link). */
 export async function sendLoginCode(email: string): Promise<AuthResult> {
   if (!supabase) return { ok: false, error: 'Backend is not configured.' };
-  const { error } = await supabase.auth.signInWithOtp({ email });
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true },
+  });
   if (error) return { ok: false, error: errMsg(error) };
   return { ok: true };
+}
+
+/**
+ * Passwordless magic link. Opens the email link which redirects back via
+ * `aura-field://auth/callback` (configured in supabase/config.toml).
+ */
+export async function sendMagicLink(email: string): Promise<AuthResult> {
+  if (!supabase) return { ok: false, error: 'Backend is not configured.' };
+  const redirectTo = Linking.createURL('auth/callback');
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: redirectTo,
+      shouldCreateUser: true,
+    },
+  });
+  if (error) return { ok: false, error: errMsg(error) };
+  return { ok: true };
+}
+
+/** OAuth via Supabase (Apple / Google). Requires provider enabled in dashboard. */
+export async function signInWithOAuth(
+  provider: 'apple' | 'google',
+): Promise<AuthResult> {
+  if (!supabase) return { ok: false, error: 'Backend is not configured.' };
+  const redirectTo = Linking.createURL('auth/callback');
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
+  });
+  if (error) return { ok: false, error: errMsg(error) };
+  if (!data.url) return { ok: false, error: 'No OAuth URL returned.' };
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  if (result.type !== 'success' || !('url' in result) || !result.url) {
+    return { ok: false, error: 'Sign-in was cancelled.' };
+  }
+
+  const parsed = Linking.parse(result.url);
+  const query = parsed.queryParams ?? {};
+  // PKCE: exchange code if present
+  const code = typeof query.code === 'string' ? query.code : null;
+  if (code) {
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError) return { ok: false, error: errMsg(exchangeError) };
+    return { ok: true };
+  }
+
+  // Implicit fragment tokens (fallback)
+  const accessToken =
+    typeof query.access_token === 'string' ? query.access_token : null;
+  const refreshToken =
+    typeof query.refresh_token === 'string' ? query.refresh_token : null;
+  if (accessToken && refreshToken) {
+    const { error: setErr } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (setErr) return { ok: false, error: errMsg(setErr) };
+    return { ok: true };
+  }
+
+  return { ok: false, error: 'Could not complete OAuth session.' };
+}
+
+/** Restore session on cold start; returns whether a valid session exists. */
+export async function restoreSession(): Promise<boolean> {
+  if (!supabase) return false;
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session) return false;
+  // Proactively refresh if near expiry
+  const expiresAt = data.session.expires_at ?? 0;
+  if (expiresAt * 1000 < Date.now() + 60_000) {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    return Boolean(refreshed.session) && !refreshError;
+  }
+  return true;
 }
 
 export async function signOutUser(): Promise<void> {

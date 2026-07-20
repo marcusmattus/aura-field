@@ -17,7 +17,14 @@ import { Text } from 'heroui-native';
 import { Display, Logo, Mono, SoftFade } from '@/components/ui';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
-import { sendLoginCode, signInWithPassword, signUpWithEmail, verifyEmailOtp } from '@/lib/supabase';
+import {
+  sendLoginCode,
+  sendMagicLink,
+  signInWithOAuth,
+  signInWithPassword,
+  signUpWithEmail,
+  verifyEmailOtp,
+} from '@/lib/supabase';
 
 const ACCENT = SURFACE_ACCENT.you;
 const INK = '#e9ecf5';
@@ -216,6 +223,66 @@ export default function AuthScreen() {
                   <Mono style={{ color: ACCENT }}>EMAIL ME A LOGIN CODE INSTEAD</Mono>
                 </Pressable>
               ) : null}
+
+              <Pressable
+                className="mt-3 items-center"
+                hitSlop={8}
+                onPress={async () => {
+                  setError(null);
+                  if (!isEmail(email)) {
+                    setError('Enter a valid email for the magic link.');
+                    return;
+                  }
+                  setBusy(true);
+                  const res = await sendMagicLink(email.trim());
+                  setBusy(false);
+                  if (!res.ok) {
+                    setError(res.error);
+                    return;
+                  }
+                  setError(null);
+                  setStep('verify');
+                }}
+              >
+                <Mono style={{ color: MUTE }}>SEND MAGIC LINK</Mono>
+              </Pressable>
+
+              <View className="mt-6 flex-row gap-3">
+                <Pressable
+                  className="border-line bg-panel flex-1 items-center rounded-full border py-3"
+                  disabled={busy}
+                  onPress={async () => {
+                    setBusy(true);
+                    setError(null);
+                    const res = await signInWithOAuth('apple');
+                    setBusy(false);
+                    if (!res.ok) {
+                      setError(res.error);
+                      return;
+                    }
+                    await advanceToApp();
+                  }}
+                >
+                  <Mono>APPLE</Mono>
+                </Pressable>
+                <Pressable
+                  className="border-line bg-panel flex-1 items-center rounded-full border py-3"
+                  disabled={busy}
+                  onPress={async () => {
+                    setBusy(true);
+                    setError(null);
+                    const res = await signInWithOAuth('google');
+                    setBusy(false);
+                    if (!res.ok) {
+                      setError(res.error);
+                      return;
+                    }
+                    await advanceToApp();
+                  }}
+                >
+                  <Mono>GOOGLE</Mono>
+                </Pressable>
+              </View>
 
               <Pressable className="mt-6 items-center" hitSlop={8} onPress={switchMode}>
                 <Text className="text-mute" style={{ fontSize: 13 }}>

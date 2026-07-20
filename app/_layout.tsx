@@ -1,6 +1,7 @@
 // oxlint-disable-next-line eslint-plugin-import/no-unassigned-import
 import '../global.css';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   Inter_400Regular,
@@ -18,7 +19,7 @@ import {
 import { Lora_400Regular_Italic, Lora_500Medium_Italic } from '@expo-google-fonts/lora';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import * as DevClient from 'expo-dev-client';
 import { HeroUINativeProvider } from 'heroui-native';
 import { Uniwind } from 'uniwind';
@@ -34,6 +35,8 @@ import {
 import { initPostHog } from '@/lib/posthog';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
 import { useChakraStore } from '@/lib/store';
+import { useCloudHydration } from '@/lib/sync/hydrate';
+import { restoreSession } from '@/lib/supabase';
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -64,6 +67,8 @@ function useAccessGate(navigatorReady: boolean) {
   const authenticated = useChakraStore((s) => s.authenticated);
   const profileComplete = useChakraStore((s) => s.profileComplete);
 
+  useCloudHydration(authenticated && profileComplete);
+
   useEffect(() => {
     if (!navigatorReady || !hydrated) return;
     const first = segments[0];
@@ -73,13 +78,16 @@ function useAccessGate(navigatorReady: boolean) {
       return;
     }
     if (!authenticated) {
-      // Allow the onboarding slides and the paywall (skip path) through, but
-      // steer anyone landing on the tabs back to sign in.
       if (first !== 'auth' && first !== 'onboarding') router.replace('/auth');
       return;
     }
     if (!profileComplete) {
-      if (first !== 'profile-setup' && first !== 'paywall' && first !== 'auth') {
+      if (
+        first !== 'profile-setup' &&
+        first !== 'paywall' &&
+        first !== 'auth' &&
+        first !== 'check-in'
+      ) {
         router.replace('/profile-setup');
       }
     }
@@ -92,6 +100,7 @@ Uniwind.setTheme('dark');
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [queryClient] = useState(() => new QueryClient());
   const [loaded, error] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -106,6 +115,13 @@ export default function RootLayout() {
     Lora_400Regular_Italic,
     Lora_500Medium_Italic,
   });
+
+  // Harden cold-start session restore early
+  useEffect(() => {
+    void restoreSession().then((ok) => {
+      if (ok) void useChakraStore.getState().onAuthenticated();
+    });
+  }, []);
 
   // Report uncaught JS errors and unhandled promise rejections to parent (Bilt preview iframe)
   useEffect(() => {
@@ -193,20 +209,24 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <HeroUINativeProvider>
-        <Stack screenOptions={{ contentStyle: { backgroundColor: '#0a0e18' } }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="auth" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
-          <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
-          <Stack.Screen
-            name="inspector/[chakra]"
-            options={{ presentation: 'modal', headerShown: false }}
-          />
-          <Stack.Screen name="session" options={{ presentation: 'modal', headerShown: false }} />
-        </Stack>
-      </HeroUINativeProvider>
+      <QueryClientProvider client={queryClient}>
+        <HeroUINativeProvider>
+          <Stack screenOptions={{ contentStyle: { backgroundColor: '#0a0e18' } }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
+            <Stack.Screen name="auth" options={{ headerShown: false, animation: 'fade' }} />
+            <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+            <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
+            <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="check-in" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen
+              name="inspector/[chakra]"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen name="session" options={{ presentation: 'modal', headerShown: false }} />
+          </Stack>
+        </HeroUINativeProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }
