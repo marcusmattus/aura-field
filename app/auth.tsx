@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowRight, ChevronLeft } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,25 +13,31 @@ import {
   View,
 } from 'react-native';
 import { Text } from 'heroui-native';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 
 import { Display, Logo, Mono, SoftFade } from '@/components/ui';
 import { SURFACE_ACCENT } from '@/lib/chakras';
-import { useChakraStore } from '@/lib/store';
+import { isFirebaseConfigured } from '@/lib/firebase';
 import {
-  sendLoginCode,
-  sendMagicLink,
-  signInWithOAuth,
-  signInWithPassword,
+  confirmPhoneCode,
+  googleAuthRequestConfig,
+  sendPhoneCode,
+  signInWithEmail,
+  signInWithGoogle,
   signUpWithEmail,
-  verifyEmailOtp,
-} from '@/lib/supabase';
+} from '@/lib/firebaseAuth';
+import { useChakraStore } from '@/lib/store';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const ACCENT = SURFACE_ACCENT.you;
 const INK = '#e9ecf5';
 const MUTE = '#8a90a6';
 
 type Mode = 'signup' | 'signin';
-type Step = 'credentials' | 'verify';
+type Tab = 'email' | 'phone';
+type Step = 'credentials' | 'verify-phone';
 
 function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -43,13 +49,23 @@ export default function AuthScreen() {
   const onAuthenticated = useChakraStore((s) => s.onAuthenticated);
 
   const [mode, setMode] = useState<Mode>('signup');
+  const [tab, setTab] = useState<Tab>('email');
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
+  const [phone, setPhone] = useState('');
+  const [phoneCode, setPhoneCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const codeRef = useRef<TextInput>(null);
+
+  const googleCfg = googleAuthRequestConfig();
+  const [googleRequest, googleResponse, promptGoogle] = Google.useIdTokenAuthRequest({
+    clientId: googleCfg.webClientId,
+    iosClientId: googleCfg.iosClientId,
+    androidClientId: googleCfg.androidClientId,
+    webClientId: googleCfg.webClientId,
+  });
 
   const sigilSize = Math.min(width - 200, 120);
 
@@ -59,8 +75,33 @@ export default function AuthScreen() {
     router.replace(profileComplete ? '/paywall' : '/profile-setup');
   };
 
-  const submitCredentials = async () => {
+  const googleHandled = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (googleResponse?.type !== 'success') return;
+    const idToken = googleResponse.params.id_token;
+    if (!idToken || googleHandled.current === idToken) return;
+    googleHandled.current = idToken;
+    setBusy(true);
     setError(null);
+    void signInWithGoogle({ idToken }).then(async (res) => {
+      setBusy(false);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      await onAuthenticated();
+      const { profileComplete } = useChakraStore.getState();
+      router.replace(profileComplete ? '/paywall' : '/profile-setup');
+    });
+  }, [googleResponse, onAuthenticated, router]);
+
+  const submitEmail = async () => {
+    setError(null);
+    if (!isFirebaseConfigured) {
+      setError('Firebase is not configured. Add EXPO_PUBLIC_FIREBASE_* env vars.');
+      return;
+    }
     if (!isEmail(email)) {
       setError('Enter a valid email address.');
       return;
@@ -70,54 +111,10 @@ export default function AuthScreen() {
       return;
     }
     setBusy(true);
-    if (mode === 'signup') {
-      const res = await signUpWithEmail(email.trim(), password);
-      setBusy(false);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      setStep('verify');
-      setTimeout(() => codeRef.current?.focus(), 350);
-    } else {
-      // Returning member: try password first; fall back to an email code.
-      const res = await signInWithPassword(email.trim(), password);
-      if (res.ok) {
-        setBusy(false);
-        await advanceToApp();
-        return;
-      }
-      setBusy(false);
-      setError(res.error);
-    }
-  };
-
-  const sendCode = async () => {
-    setError(null);
-    if (!isEmail(email)) {
-      setError('Enter a valid email address.');
-      return;
-    }
-    setBusy(true);
-    const res = await sendLoginCode(email.trim());
-    setBusy(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    setStep('verify');
-    setTimeout(() => codeRef.current?.focus(), 350);
-  };
-
-  const verify = async () => {
-    setError(null);
-    if (code.length !== 6) {
-      setError('Enter the 6-digit code from your email.');
-      return;
-    }
-    setBusy(true);
-    const type = mode === 'signup' ? 'signup' : 'email';
-    const res = await verifyEmailOtp(email.trim(), code, type);
+    const res =
+      mode === 'signup'
+        ? await signUpWithEmail(email.trim(), password)
+        : await signInWithEmail(email.trim(), password);
     setBusy(false);
     if (!res.ok) {
       setError(res.error);
@@ -126,21 +123,72 @@ export default function AuthScreen() {
     await advanceToApp();
   };
 
-  const switchMode = () => {
-    setMode((m) => (m === 'signup' ? 'signin' : 'signup'));
-    setStep('credentials');
+  const onGoogle = async () => {
     setError(null);
-    setCode('');
-    setPassword('');
+    if (!isFirebaseConfigured) {
+      setError('Firebase is not configured.');
+      return;
+    }
+    setBusy(true);
+    if (Platform.OS === 'web') {
+      const res = await signInWithGoogle();
+      setBusy(false);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      await advanceToApp();
+      return;
+    }
+    if (!googleRequest) {
+      setBusy(false);
+      setError('Google Sign-In is not ready. Set EXPO_PUBLIC_FIREBASE_GOOGLE_* client IDs.');
+      return;
+    }
+    await promptGoogle();
+    setBusy(false);
+  };
+
+  const submitPhone = async () => {
+    setError(null);
+    if (!phone.trim().startsWith('+')) {
+      setError('Use E.164 format, e.g. +15551234567.');
+      return;
+    }
+    setBusy(true);
+    const res = await sendPhoneCode(phone.trim());
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setStep('verify-phone');
+    setTimeout(() => codeRef.current?.focus(), 350);
+  };
+
+  const verifyPhone = async () => {
+    setError(null);
+    if (phoneCode.length < 6) {
+      setError('Enter the 6-digit SMS code.');
+      return;
+    }
+    setBusy(true);
+    const res = await confirmPhoneCode(phoneCode);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    await advanceToApp();
   };
 
   return (
     <View className="bg-field flex-1">
-      {/* eslint-disable-next-line react/style-prop-object -- expo-status-bar `style` is a string enum */}
+      {/* eslint-disable-next-line react/style-prop-object -- expo-status-bar */}
       <StatusBar style="light" />
 
       <View className="pt-safe-offset-3 flex-row items-center justify-between px-5">
-        {step === 'verify' ? (
+        {step === 'verify-phone' ? (
           <Pressable
             hitSlop={12}
             onPress={() => {
@@ -185,106 +233,90 @@ export default function AuthScreen() {
                 {mode === 'signup' ? 'Begin your field' : 'Return to your field'}
               </Display>
               <Text className="text-mute mt-3" style={{ fontSize: 15, lineHeight: 23 }}>
-                {mode === 'signup'
-                  ? 'Your account holds your profile and intention. We email a 6-digit code to verify it.'
-                  : 'Sign in to pick up where you left off across this device.'}
+                Sign in with email, Google, or phone. Powered by Firebase Authentication.
               </Text>
 
-              <View className="mt-6 gap-3">
-                <Field
-                  label="EMAIL"
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                />
-                <Field
-                  label="PASSWORD"
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="At least 6 characters"
-                  secureTextEntry
-                  autoComplete="password"
-                  textContentType="password"
-                />
+              <View className="mt-5 flex-row gap-2">
+                {(['email', 'phone'] as Tab[]).map((t) => (
+                  <Pressable
+                    key={t}
+                    onPress={() => setTab(t)}
+                    className="rounded-full px-4 py-2"
+                    style={{ backgroundColor: tab === t ? ACCENT : '#141a28' }}
+                  >
+                    <Mono style={{ color: tab === t ? '#0a0e18' : MUTE }}>
+                      {t === 'email' ? 'EMAIL' : 'PHONE'}
+                    </Mono>
+                  </Pressable>
+                ))}
               </View>
+
+              {tab === 'email' ? (
+                <View className="mt-6 gap-3">
+                  <Field
+                    label="EMAIL"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                  />
+                  <Field
+                    label="PASSWORD"
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="At least 6 characters"
+                    secureTextEntry
+                    autoComplete="password"
+                    textContentType="password"
+                  />
+                </View>
+              ) : (
+                <View className="mt-6 gap-3">
+                  <Field
+                    label="PHONE (E.164)"
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder="+15551234567"
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
+                    textContentType="telephoneNumber"
+                  />
+                  {Platform.OS === 'web' ? <View nativeID="recaptcha-container" /> : null}
+                </View>
+              )}
 
               {error ? <ErrorText>{error}</ErrorText> : null}
 
-              <PrimaryButton busy={busy} onPress={submitCredentials}>
-                {mode === 'signup' ? 'SEND VERIFICATION CODE' : 'SIGN IN'}
+              <PrimaryButton
+                busy={busy}
+                onPress={tab === 'email' ? submitEmail : submitPhone}
+              >
+                {tab === 'email'
+                  ? mode === 'signup'
+                    ? 'CREATE ACCOUNT'
+                    : 'SIGN IN'
+                  : 'SEND SMS CODE'}
               </PrimaryButton>
 
-              {mode === 'signin' ? (
-                <Pressable className="mt-4 items-center" hitSlop={8} onPress={sendCode}>
-                  <Mono style={{ color: ACCENT }}>EMAIL ME A LOGIN CODE INSTEAD</Mono>
-                </Pressable>
-              ) : null}
-
               <Pressable
-                className="mt-3 items-center"
-                hitSlop={8}
-                onPress={async () => {
-                  setError(null);
-                  if (!isEmail(email)) {
-                    setError('Enter a valid email for the magic link.');
-                    return;
-                  }
-                  setBusy(true);
-                  const res = await sendMagicLink(email.trim());
-                  setBusy(false);
-                  if (!res.ok) {
-                    setError(res.error);
-                    return;
-                  }
-                  setError(null);
-                  setStep('verify');
-                }}
+                className="border-line bg-panel mt-4 items-center rounded-full border py-3.5"
+                disabled={busy}
+                onPress={onGoogle}
               >
-                <Mono style={{ color: MUTE }}>SEND MAGIC LINK</Mono>
+                <Mono>CONTINUE WITH GOOGLE</Mono>
               </Pressable>
 
-              <View className="mt-6 flex-row gap-3">
-                <Pressable
-                  className="border-line bg-panel flex-1 items-center rounded-full border py-3"
-                  disabled={busy}
-                  onPress={async () => {
-                    setBusy(true);
-                    setError(null);
-                    const res = await signInWithOAuth('apple');
-                    setBusy(false);
-                    if (!res.ok) {
-                      setError(res.error);
-                      return;
-                    }
-                    await advanceToApp();
-                  }}
-                >
-                  <Mono>APPLE</Mono>
-                </Pressable>
-                <Pressable
-                  className="border-line bg-panel flex-1 items-center rounded-full border py-3"
-                  disabled={busy}
-                  onPress={async () => {
-                    setBusy(true);
-                    setError(null);
-                    const res = await signInWithOAuth('google');
-                    setBusy(false);
-                    if (!res.ok) {
-                      setError(res.error);
-                      return;
-                    }
-                    await advanceToApp();
-                  }}
-                >
-                  <Mono>GOOGLE</Mono>
-                </Pressable>
-              </View>
-
-              <Pressable className="mt-6 items-center" hitSlop={8} onPress={switchMode}>
+              <Pressable
+                className="mt-6 items-center"
+                hitSlop={8}
+                onPress={() => {
+                  setMode((m) => (m === 'signup' ? 'signin' : 'signup'));
+                  setError(null);
+                }}
+              >
                 <Text className="text-mute" style={{ fontSize: 13 }}>
                   {mode === 'signup'
                     ? 'Already have an account? Sign in'
@@ -294,24 +326,19 @@ export default function AuthScreen() {
             </View>
           ) : (
             <View className="mt-2">
-              <Mono style={{ color: ACCENT }}>CHAKRAOS · VERIFY</Mono>
+              <Mono style={{ color: ACCENT }}>CHAKRAOS · VERIFY PHONE</Mono>
               <Display size={30} className="mt-2">
-                Enter your code
+                Enter SMS code
               </Display>
               <Text className="text-mute mt-3" style={{ fontSize: 15, lineHeight: 23 }}>
-                We sent a 6-digit code to{' '}
-                <Text className="text-ink" style={{ fontSize: 15 }}>
-                  {email.trim()}
-                </Text>
-                . Enter it below to continue.
+                We sent a code to {phone.trim()}.
               </Text>
-
               <View className="mt-6">
                 <Mono className="mb-2">6-DIGIT CODE</Mono>
                 <TextInput
                   ref={codeRef}
-                  value={code}
-                  onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
+                  value={phoneCode}
+                  onChangeText={(t) => setPhoneCode(t.replace(/\D/g, '').slice(0, 6))}
                   placeholder="······"
                   placeholderTextColor="#3a4255"
                   keyboardType="number-pad"
@@ -325,20 +352,10 @@ export default function AuthScreen() {
                   }}
                 />
               </View>
-
               {error ? <ErrorText>{error}</ErrorText> : null}
-
-              <PrimaryButton busy={busy} onPress={verify}>
+              <PrimaryButton busy={busy} onPress={verifyPhone}>
                 VERIFY &amp; CONTINUE
               </PrimaryButton>
-
-              <Pressable
-                className="mt-4 items-center"
-                hitSlop={8}
-                onPress={mode === 'signup' ? submitCredentials : sendCode}
-              >
-                <Mono style={{ color: ACCENT }}>RESEND CODE</Mono>
-              </Pressable>
             </View>
           )}
         </ScrollView>

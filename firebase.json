@@ -1,0 +1,21 @@
+{
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "ChakraOS",
+        "supportEmail": "support@chakraos.app",
+        "authorizedRedirectUris": [
+          "http://localhost",
+          "http://localhost:8081",
+          "aura-field://",
+          "https://chakraos.app"
+        ]
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

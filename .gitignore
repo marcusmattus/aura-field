@@ -51,3 +51,9 @@ bun.lockb
 
 _openrouter_comms.jsonl
 _project_metadata.jsonl
+# Firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+.env

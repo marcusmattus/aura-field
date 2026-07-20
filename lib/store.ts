@@ -17,7 +17,10 @@ import {
   uploadVoiceNote,
 } from '@/lib/db';
 import { FREQUENCY_BY_KEY } from '@/lib/frequency/registry';
-import { fetchProfile, hasBackend, saveProfile, signOutUser, supabase } from '@/lib/supabase';
+import { getCurrentUser, signOutFirebase, subscribeAuth } from '@/lib/firebaseAuth';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { fetchUserProfile, saveUserProfile as saveFirestoreProfile } from '@/lib/firestore';
+import { hasBackend, supabase } from '@/lib/supabase';
 import { enqueueOutbox } from '@/lib/sync/outbox';
 import type {
   Breakthrough,
@@ -445,34 +448,64 @@ export const useChakraStore = create<ChakraOSState>()(
       },
 
       onAuthenticated: async () => {
-        const profile = await fetchProfile();
+        const user = getCurrentUser();
+        if (!user) {
+          set({ authenticated: false, profile: null, profileComplete: false });
+          return;
+        }
+        let profile: UserProfile | null = null;
+        if (isFirebaseConfigured) {
+          try {
+            profile = await fetchUserProfile(user.uid, user.email ?? user.phoneNumber ?? '');
+          } catch {
+            profile = null;
+          }
+        }
+        if (!profile) {
+          profile = {
+            id: user.uid,
+            email: user.email ?? '',
+            displayName: user.displayName ?? '',
+            birthdate: null,
+            focusAreas: [],
+            baselineMood: null,
+            experienceLevel: null,
+            primaryIntention: '',
+          };
+        }
         set({
           authenticated: true,
           profile,
-          profileComplete: Boolean(profile?.displayName),
+          profileComplete: Boolean(profile.displayName),
         });
-        // If a returning member already set a primary intention, mirror it into
-        // the local 30-day intention so the You tab stays coherent.
-        if (profile?.primaryIntention) {
-          set((s) => ({ intention: { ...s.intention, text: profile.primaryIntention } }));
+        if (profile.primaryIntention) {
+          set((s) => ({ intention: { ...s.intention, text: profile!.primaryIntention } }));
         }
       },
 
       saveUserProfile: async (patch) => {
-        const saved = await saveProfile(patch);
-        if (!saved) return false;
-        set((s) => ({
-          profile: saved,
-          profileComplete: Boolean(saved.displayName),
-          intention: saved.primaryIntention
-            ? { ...s.intention, text: saved.primaryIntention }
-            : s.intention,
-        }));
-        return true;
+        const user = getCurrentUser();
+        if (!user || !isFirebaseConfigured) return false;
+        try {
+          const saved = await saveFirestoreProfile(user.uid, {
+            ...patch,
+            email: user.email ?? '',
+          });
+          set((s) => ({
+            profile: saved,
+            profileComplete: Boolean(saved.displayName),
+            intention: saved.primaryIntention
+              ? { ...s.intention, text: saved.primaryIntention }
+              : s.intention,
+          }));
+          return true;
+        } catch {
+          return false;
+        }
       },
 
       signOut: async () => {
-        await signOutUser();
+        await signOutFirebase();
         set({ authenticated: false, profile: null, profileComplete: false });
       },
     }),
@@ -517,22 +550,20 @@ export const useChakraStore = create<ChakraOSState>()(
         }
         state?.recompute();
         useChakraStore.setState({ hydrated: true });
-        // Reconcile the persisted auth flag with the real Supabase session: a
-        // session may have expired since last launch. If still valid, refresh
-        // the profile from the backend.
+        // Reconcile with Firebase Auth session
         void (async () => {
-          const { supabase } = await import('@/lib/supabase');
-          if (!supabase) return;
-          const { data } = await supabase.auth.getSession();
-          if (data.session) {
-            await useChakraStore.getState().onAuthenticated();
-          } else if (useChakraStore.getState().authenticated) {
-            useChakraStore.setState({
-              authenticated: false,
-              profile: null,
-              profileComplete: false,
-            });
-          }
+          if (!isFirebaseConfigured) return;
+          subscribeAuth((user) => {
+            if (user) {
+              void useChakraStore.getState().onAuthenticated();
+            } else if (useChakraStore.getState().authenticated) {
+              useChakraStore.setState({
+                authenticated: false,
+                profile: null,
+                profileComplete: false,
+              });
+            }
+          });
         })();
       },
     },

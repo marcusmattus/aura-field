@@ -5,87 +5,76 @@ AI-powered consciousness OS for reflection, daily alignment, journaling, frequen
 ## Stack
 
 - **Mobile:** Expo SDK 54 · React Native · Expo Router · TypeScript · Uniwind · Skia · Reanimated · Zustand · React Query · MMKV
-- **Backend:** Supabase (Auth, Postgres, Storage, Edge Functions, Realtime, RLS, pgvector)
-- **AI:** Provider abstraction (Anthropic + OpenAI) via Edge Functions — never hardcode providers in the UI
+- **Backend (primary):** Firebase Authentication + Cloud Firestore
+- **Auth providers:** Email/Password · Google Sign-In · Phone (SMS)
+- **Optional AI:** Supabase Edge Functions (provider-agnostic OpenAI/Anthropic)
 
-## Cloud-first vertical slice
+## Firebase setup
 
-Auth → Daily check-in → Journal (voice + Whisper) → Streaming coach + memory → Frequency session → Chakra score update.
+Uses official [Firebase agent skills](https://firebase.google.com/docs/ai-assistance/agent-skills) (`firebase-basics`, `firebase-auth-basics`, `firebase-firestore`).
 
+### 1. CLI login & project
+
+```bash
+npx -y firebase-tools@latest login
+npx -y firebase-tools@latest projects:list
+npx -y firebase-tools@latest use <PROJECT_ID>   # resolve from project number 574846881607
 ```
-Auth ──► Check-in ──► Journal ──► Embed/Memory ──► Streaming Coach
-                         │                              │
-                         └──► Chakra scores ◄── Frequency session
+
+### 2. Register web app & pull config
+
+```bash
+npx -y firebase-tools@latest apps:create web chakraos-web --project <PROJECT_ID>
+npx -y firebase-tools@latest apps:sdkconfig WEB <APP_ID> --project <PROJECT_ID>
 ```
+
+Copy values into `.env` (see [`.env.example`](.env.example)).
+
+### 3. Enable Auth providers & deploy Firestore
+
+```bash
+# Email/Password + Google via CLI (see firebase.json auth block)
+npx -y firebase-tools@latest deploy --only auth
+
+# Phone Auth: enable in Console → Authentication → Sign-in method → Phone
+# https://console.firebase.google.com/project/_/authentication/providers
+
+# Firestore rules + indexes
+npx -y firebase-tools@latest deploy --only firestore
+```
+
+### 4. App code
+
+| File | Role |
+|------|------|
+| [`lib/firebase.ts`](lib/firebase.ts) | App / Auth / Firestore init |
+| [`lib/firebaseAuth.ts`](lib/firebaseAuth.ts) | Email, Google, Phone helpers |
+| [`lib/firestore.ts`](lib/firestore.ts) | Profiles, journals, check-ins |
+| [`app/auth.tsx`](app/auth.tsx) | Sign-in UI |
+| [`firestore.rules`](firestore.rules) | Owner-scoped security rules |
+
+I've set up prototype Security Rules to keep the data in Firestore safe. They are designed to be secure for owner-only access (`request.auth.uid == userId`) with validated profile fields. However, you should review and verify them before broadly sharing your app. If you'd like, I can help you harden these rules.
 
 ## Environment
 
-Create `.env` (or EAS secrets):
-
 ```bash
-EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-anon-key
+# Firebase (required for Auth + Firestore)
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
+
+# Google OAuth client IDs (from Firebase / Google Cloud console)
+EXPO_PUBLIC_FIREBASE_GOOGLE_WEB_CLIENT_ID=
+EXPO_PUBLIC_FIREBASE_GOOGLE_IOS_CLIENT_ID=
+EXPO_PUBLIC_FIREBASE_GOOGLE_ANDROID_CLIENT_ID=
+
+# Optional Supabase AI edge functions
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
-
-Edge Function secrets:
-
-```bash
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-supabase secrets set OPENAI_API_KEY=sk-...
-supabase secrets set AI_PROVIDER=anthropic   # or openai
-```
-
-## Database
-
-```bash
-supabase db push
-# or
-supabase migration up
-```
-
-Schema lives in [`supabase/migrations/20260717000001_chakraos_schema.sql`](supabase/migrations/20260717000001_chakraos_schema.sql):
-
-profiles, user_preferences, daily_checkins, journal_entries, voice_notes, conversations, conversation_messages, memory_items (pgvector), chakra_scores, sound_library, frequency_sessions, meditation_sessions, reflection_summaries, analytics_events + RLS + voice-notes storage bucket.
-
-## Edge Functions
-
-```bash
-supabase functions deploy journal-analyze coach-respond ai-chat ai-embed transcribe-voice reflect
-```
-
-| Function | Role |
-|----------|------|
-| `ai-chat` | Streaming / non-streaming coach (provider-agnostic) |
-| `ai-embed` | Embeddings + optional pgvector match / memory persist |
-| `transcribe-voice` | Whisper transcription + theme extraction |
-| `reflect` | Reflection summary → memory + chakra score deltas |
-| `journal-analyze` / `coach-respond` | Legacy deterministic-friendly agents (still used as fallbacks) |
-
-## Auth
-
-Supported:
-
-- Email + password + OTP verification
-- Passwordless OTP code
-- Magic link (`aura-field://auth/callback`)
-- Apple / Google OAuth via Supabase (enable providers in dashboard; configure redirect URLs)
-
-Session tokens persist via **MMKV** when available, else AsyncStorage. Cold start calls `restoreSession()`.
-
-### Native OAuth notes
-
-- Enable Apple / Google in Supabase Auth settings
-- Add redirect URL: `aura-field://auth/callback`
-- iOS: Apple Sign In capability required for production Apple OAuth
-- Google: configure iOS/Android client IDs in Supabase
-
-## Frequency engine
-
-[`lib/frequency/`](lib/frequency/) is the single source of truth:
-
-- Registry of 9 nodes (Earth → Soul) with base + beat Hz
-- `colorFromFrequency(hz, beatHz)` derives colour, gradient, glow, visualizer pulse — **no hardcoded session colours as authority**
-- Oscillator tones via [`lib/tone.ts`](lib/tone.ts)
 
 ## Local development
 
@@ -97,23 +86,6 @@ npm run lint
 npx expo start
 ```
 
-## EAS / production build
+## Cursor + Firebase MCP
 
-```bash
-npx eas build --platform ios
-npx eas build --platform android
-```
-
-Ensure `app.config.ts` bundle IDs and splash assets are set for your org before App Store submission.
-
-## Privacy & safety
-
-- RLS on every user table (`auth.uid() = user_id`)
-- API keys only on Edge Functions
-- Coach prompts forbid diagnosis / medical advice and include crisis hand-off (e.g. 988)
-- Journals sync to the user’s private cloud row — not shared across users
-
-## Tests & CI
-
-- Vitest unit tests: frequency→colour, field index, provider factory, edge payload shapes
-- GitHub Actions: `typecheck` + `test` + `lint` on push/PR
+Firebase MCP is configured in [`.cursor/mcp.json`](.cursor/mcp.json). Restart Cursor so the Firebase MCP server connects, then Firebase CLI tools become available to the agent.

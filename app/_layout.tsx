@@ -36,7 +36,8 @@ import { initPostHog } from '@/lib/posthog';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
 import { useChakraStore } from '@/lib/store';
 import { useCloudHydration } from '@/lib/sync/hydrate';
-import { restoreSession } from '@/lib/supabase';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { getCurrentUser } from '@/lib/firebaseAuth';
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -116,11 +117,12 @@ export default function RootLayout() {
     Lora_500Medium_Italic,
   });
 
-  // Harden cold-start session restore early
+  // Harden cold-start session restore via Firebase Auth
   useEffect(() => {
-    void restoreSession().then((ok) => {
-      if (ok) void useChakraStore.getState().onAuthenticated();
-    });
+    if (!isFirebaseConfigured) return;
+    if (getCurrentUser()) {
+      void useChakraStore.getState().onAuthenticated();
+    }
   }, []);
 
   // Report uncaught JS errors and unhandled promise rejections to parent (Bilt preview iframe)
