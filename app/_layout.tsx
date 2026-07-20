@@ -20,7 +20,6 @@ import { Lora_400Regular_Italic, Lora_500Medium_Italic } from '@expo-google-font
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { useEffect, useState } from 'react';
-import * as DevClient from 'expo-dev-client';
 import { HeroUINativeProvider } from 'heroui-native';
 import { Uniwind } from 'uniwind';
 import {
@@ -173,16 +172,30 @@ export default function RootLayout() {
     }
   }, []);
 
+  // Dev-client menu helpers — skip entirely in Expo Go (no native dev-client).
   useEffect(() => {
     const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-    if (__DEV__ && Platform.OS !== 'web' && !isExpoGo) {
-      const timer = setTimeout(() => {
-        DevClient.closeMenu();
-        DevClient.hideMenu();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
+    if (!__DEV__ || Platform.OS === 'web' || isExpoGo) return undefined;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    void import('expo-dev-client')
+      .then((DevClient) => {
+        if (cancelled) return;
+        timer = setTimeout(() => {
+          DevClient.closeMenu();
+          DevClient.hideMenu();
+        }, 1000);
+      })
+      .catch(() => {
+        // Expo Go / missing native module — ignore.
+      });
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {

@@ -1,0 +1,65 @@
+name: EAS Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile
+        required: true
+        default: preview
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+      platform:
+        description: Target platform
+        required: true
+        default: all
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+      submit:
+        description: Auto-submit production build to stores
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    name: EAS ${{ inputs.profile }} (${{ inputs.platform }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo / EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+          EXPO_OWNER: ${{ secrets.EXPO_OWNER }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          ARGS=(--profile "${{ inputs.profile }}" --platform "${{ inputs.platform }}" --non-interactive)
+          if [ "${{ inputs.submit }}" = "true" ] && [ "${{ inputs.profile }}" = "production" ]; then
+            ARGS+=(--auto-submit)
+          fi
+          npx eas-cli build "${ARGS[@]}"

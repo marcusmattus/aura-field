@@ -2,13 +2,16 @@ import type { ConfigContext, ExpoConfig } from '@expo/config';
 
 type ExpoPlugins = NonNullable<ExpoConfig['plugins']>;
 
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+const OWNER = process.env.EXPO_OWNER ?? process.env.EXPO_PUBLIC_EXPO_OWNER;
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const nativePlugins: ExpoPlugins =
     process.env.EXPO_PLATFORM === 'native'
       ? [['expo-dev-client', { launchMode: 'most-recent' }], 'react-native-maps']
       : [];
 
-  return {
+  const expoConfig: ExpoConfig = {
     ...config,
     name: 'Aura Field',
     slug: 'aura-field',
@@ -28,10 +31,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ITSAppUsesNonExemptEncryption: false,
       },
       supportsTablet: true,
-      bundleIdentifier: process.env.BILT_IOS_BUNDLE_ID ?? 'com.yourcompany.yourapp',
+      bundleIdentifier: process.env.BILT_IOS_BUNDLE_ID ?? 'com.aurafield.app',
     },
     android: {
-      package: process.env.BILT_ANDROID_PACKAGE ?? 'com.yourcompany.yourapp',
+      package: process.env.BILT_ANDROID_PACKAGE ?? 'com.aurafield.app',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#05060A',
@@ -42,10 +45,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     extra: {
       appStoreAppId: process.env.BILT_APP_STORE_APP_ID,
+      ...(EAS_PROJECT_ID ? { eas: { projectId: EAS_PROJECT_ID } } : {}),
     },
     plugins: [
       'expo-router',
       'expo-font',
+      'expo-updates',
       [
         'expo-splash-screen',
         {
@@ -72,4 +77,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       reactCompiler: true,
     },
   };
+
+  if (OWNER) {
+    expoConfig.owner = OWNER;
+  }
+
+  if (EAS_PROJECT_ID) {
+    expoConfig.updates = {
+      url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+      fallbackToCacheTimeout: 0,
+    };
+  }
+
+  return expoConfig;
 };
