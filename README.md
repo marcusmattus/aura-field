@@ -94,17 +94,58 @@ npm install
 npm run typecheck
 npm run test
 npm run lint
-npx expo start
 ```
 
-## EAS / production build
+### Expo Go (quick device preview)
+
+Open the JS bundle in the Expo Go app (SDK 54):
 
 ```bash
-npx eas build --platform ios
-npx eas build --platform android
+npm run start:go:tunnel
 ```
 
-Ensure `app.config.ts` bundle IDs and splash assets are set for your org before App Store submission.
+Scan the QR code with Expo Go (Camera on iOS, Expo Go on Android).  
+MMKV falls back to AsyncStorage in Expo Go. Custom native modules that are not in Expo Go require a **development build** instead.
+
+### Development build (recommended for full native)
+
+```bash
+# one-time: expo login / EXPO_TOKEN, then link the project
+npx eas init
+npm run eas:build:dev
+```
+
+Install the build from the Expo dashboard, then:
+
+```bash
+npx expo start --dev-client
+```
+
+## EAS build & store submission
+
+Requires an Expo account (`npx eas login` or `EXPO_TOKEN`) and Apple/Google store credentials managed by EAS.
+
+```bash
+# Link project (writes EAS projectId into app config / env)
+npx eas init
+
+# Optional: set owner + project id for CI
+# export EXPO_OWNER=your-expo-username
+# export EAS_PROJECT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+# Internal preview APK/IPA (shareable install links)
+npm run eas:build:preview
+
+# Production binaries + auto-submit to stores
+npm run eas:build:submit
+
+# Or build, then submit the latest production artifacts
+npm run eas:build:production
+npm run eas:submit
+```
+
+Profiles live in [`eas.json`](eas.json): `development`, `preview`, `production` (+ `development-simulator`).  
+Default bundle IDs are `com.aurafield.app` (override with `BILT_IOS_BUNDLE_ID` / `BILT_ANDROID_PACKAGE`).
 
 ## Privacy & safety
 
