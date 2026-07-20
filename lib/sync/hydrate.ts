@@ -9,16 +9,18 @@ import { useQuery } from '@tanstack/react-query';
 import {
   createJournalEntry,
   fetchLatestChakraScores,
+  listFrequencySessions,
   listJournalEntries,
   recordFrequencySession,
   trackAnalytics,
   upsertDailyCheckIn,
   type DailyCheckInInput,
 } from '@/lib/db';
+import { isChakraKey } from '@/lib/chakras';
 import { hasBackend } from '@/lib/supabase';
 import { useChakraStore } from '@/lib/store';
 import { peekOutbox, removeOutboxOp } from '@/lib/sync/outbox';
-import type { ChakraKey, EntryTag, JournalEntry, Modality } from '@/lib/types';
+import type { ChakraKey, CompletedSession, EntryTag, JournalEntry, Modality } from '@/lib/types';
 
 function rowToEntry(row: {
   id: string;
@@ -46,6 +48,7 @@ function rowToEntry(row: {
 
 export function useCloudHydration(enabled: boolean) {
   const syncEntriesFromCloud = useChakraStore((s) => s.syncEntriesFromCloud);
+  const syncSessionsFromCloud = useChakraStore((s) => s.syncSessionsFromCloud);
   const applyCloudScores = useChakraStore((s) => s.applyCloudScores);
 
   const journals = useQuery({
@@ -62,6 +65,13 @@ export function useCloudHydration(enabled: boolean) {
     staleTime: 30_000,
   });
 
+  const sessions = useQuery({
+    queryKey: ['frequency-sessions'],
+    enabled: enabled && hasBackend,
+    queryFn: () => listFrequencySessions(50),
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     if (journals.data?.length) {
       syncEntriesFromCloud(journals.data.map(rowToEntry));
@@ -73,6 +83,21 @@ export function useCloudHydration(enabled: boolean) {
       applyCloudScores(scores.data);
     }
   }, [scores.data, applyCloudScores]);
+
+  useEffect(() => {
+    if (!sessions.data?.length) return;
+    const mapped: CompletedSession[] = sessions.data
+      .filter((row) => isChakraKey(row.chakra_key))
+      .map((row) => ({
+        id: row.id,
+        sessionKey: `freq-${row.chakra_key}`,
+        chakra: row.chakra_key as ChakraKey,
+        hz: Number(row.base_frequency_hz),
+        durationS: Number(row.duration_s),
+        completedAt: new Date(row.created_at).getTime(),
+      }));
+    if (mapped.length) syncSessionsFromCloud(mapped);
+  }, [sessions.data, syncSessionsFromCloud]);
 
   useEffect(() => {
     if (!enabled || !hasBackend) return;
