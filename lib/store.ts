@@ -10,10 +10,12 @@ import { remoteAnalyze, remoteCoach } from '@/lib/agents/remote';
 import { CHAKRA_ORDER } from '@/lib/chakras';
 import {
   createJournalEntry,
+  deleteJournalEntry,
   insertChakraScores,
   invokeFunction,
   recordFrequencySession,
   trackAnalytics,
+  updateJournalEntry,
   uploadVoiceNote,
 } from '@/lib/db';
 import { FREQUENCY_BY_KEY } from '@/lib/frequency/registry';
@@ -72,12 +74,15 @@ interface ChakraOSState {
   // actions
   setCoachMessages: (messages: CoachMessage[]) => void;
   syncEntriesFromCloud: (entries: JournalEntry[]) => void;
+  syncSessionsFromCloud: (sessions: CompletedSession[]) => void;
   applyCloudScores: (scores: Record<string, { score: number; trend7d: number }>) => void;
   addEntry: (
     body: string,
     modality: Modality,
     opts?: { seededChakra?: ChakraKey; voiceUrl?: string; voiceDurationS?: number },
   ) => Promise<void>;
+  updateEntry: (id: string, body: string) => Promise<void>;
+  deleteEntry: (id: string) => Promise<void>;
   recompute: () => void;
   sendCoachMessage: (text: string) => Promise<void>;
   completeSession: (s: {
@@ -182,6 +187,11 @@ export const useChakraStore = create<ChakraOSState>()(
 
       syncEntriesFromCloud: (entries) => {
         set({ entries });
+        get().recompute();
+      },
+
+      syncSessionsFromCloud: (sessions) => {
+        set({ sessions });
         get().recompute();
       },
 
@@ -343,6 +353,36 @@ export const useChakraStore = create<ChakraOSState>()(
             }
           } catch {
             // deterministic result already applied
+          }
+        }
+      },
+
+      updateEntry: async (id, body) => {
+        const trimmed = body.trim();
+        if (!trimmed) return;
+        set((s) => ({
+          entries: s.entries.map((e) => (e.id === id ? { ...e, body: trimmed } : e)),
+        }));
+        get().recompute();
+        if (hasBackend) {
+          try {
+            await updateJournalEntry(id, { body: trimmed });
+            void trackAnalytics('journal_updated', {});
+          } catch {
+            /* optimistic local edit retained; next hydrate reconciles */
+          }
+        }
+      },
+
+      deleteEntry: async (id) => {
+        set((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
+        get().recompute();
+        if (hasBackend) {
+          try {
+            await deleteJournalEntry(id);
+            void trackAnalytics('journal_deleted', {});
+          } catch {
+            /* optimistic delete retained */
           }
         }
       },
