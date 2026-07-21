@@ -499,6 +499,26 @@ export const useChakraStore = create<ChakraOSState>()(
       },
 
       saveUserProfile: async (patch) => {
+        if (!hasBackend) {
+          const profile: UserProfile = {
+            id: 'local-profile',
+            email: '',
+            displayName: patch.displayName,
+            birthdate: patch.birthdate,
+            focusAreas: patch.focusAreas,
+            baselineMood: patch.baselineMood,
+            experienceLevel: patch.experienceLevel,
+            primaryIntention: patch.primaryIntention,
+          };
+          set((s) => ({
+            profile,
+            profileComplete: Boolean(profile.displayName),
+            intention: profile.primaryIntention
+              ? { ...s.intention, text: profile.primaryIntention }
+              : s.intention,
+          }));
+          return true;
+        }
         const saved = await saveProfile(patch);
         if (!saved) return false;
         set((s) => ({

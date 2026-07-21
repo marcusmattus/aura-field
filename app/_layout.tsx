@@ -77,7 +77,6 @@ function useAccessGate(navigatorReady: boolean) {
       return;
     }
     if (!authenticated) {
-      if (first !== 'auth' && first !== 'onboarding') router.replace('/auth');
       return;
     }
     if (!profileComplete) {
