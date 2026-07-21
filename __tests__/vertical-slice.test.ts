@@ -11,42 +11,32 @@ import { computeFieldIndex } from '../lib/agents/field';
 import type { ChakraState } from '../lib/types';
 
 describe('frequency → color', () => {
-  it('maps solfeggio carriers to traditional chakra hue bands (not a purple wash)', () => {
-    // Earth / root / sacral / solar stay warm; heart green; upper cool — distinct.
-    expect(hueFromFrequency(174)).toBeGreaterThanOrEqual(0);
-    expect(hueFromFrequency(174)).toBeLessThan(25);
+  it('maps each carrier Hz to the exact product colour table', () => {
+    const table: [number, string][] = [
+      [174, '#C0433A'],
+      [396, '#FF4D5E'],
+      [417, '#FF8A3D'],
+      [528, '#FFD23D'],
+      [639, '#36F5A6'],
+      [741, '#3DB6FF'],
+      [852, '#6B6BFF'],
+      [963, '#B14DFF'],
+      [1074, '#EAF0FF'],
+    ];
+    for (const [hz, hex] of table) {
+      expect(colorFromFrequency(hz).color.toUpperCase()).toBe(hex);
+    }
+  });
 
-    expect(hueFromFrequency(396)).toBeLessThan(18); // root red
-
-    expect(hueFromFrequency(417)).toBeGreaterThanOrEqual(18);
-    expect(hueFromFrequency(417)).toBeLessThan(45); // sacral orange
-
-    expect(hueFromFrequency(528)).toBeGreaterThanOrEqual(40);
-    expect(hueFromFrequency(528)).toBeLessThan(65); // solar gold
-
-    expect(hueFromFrequency(639)).toBeGreaterThanOrEqual(110);
-    expect(hueFromFrequency(639)).toBeLessThan(160); // heart green
-
-    expect(hueFromFrequency(741)).toBeGreaterThanOrEqual(190);
-    expect(hueFromFrequency(741)).toBeLessThan(230); // throat blue
-
-    expect(hueFromFrequency(852)).toBeGreaterThanOrEqual(240);
-    expect(hueFromFrequency(852)).toBeLessThan(270); // third indigo
-
-    expect(hueFromFrequency(963)).toBeGreaterThanOrEqual(265);
-    expect(hueFromFrequency(963)).toBeLessThan(295); // crown violet
-
-    expect(hueFromFrequency(285)).toBeGreaterThanOrEqual(285);
-    expect(hueFromFrequency(285)).toBeLessThanOrEqual(320); // soul lavender
+  it('treats 1074+ Hz as soul pale light', () => {
+    expect(colorFromFrequency(1200).color.toUpperCase()).toBe('#EAF0FF');
   });
 
   it('keeps heart green and root red (not purple)', () => {
     const heart = colorFromFrequency(639, 10);
     const root = colorFromFrequency(396, 7.83);
-    // Heart should be greener than it is blue/red
     expect(heart.rgb.g).toBeGreaterThan(heart.rgb.r);
     expect(heart.rgb.g).toBeGreaterThan(heart.rgb.b);
-    // Root should be red-dominant
     expect(root.rgb.r).toBeGreaterThan(root.rgb.g);
     expect(root.rgb.r).toBeGreaterThan(root.rgb.b);
   });
@@ -66,15 +56,16 @@ describe('frequency → color', () => {
       expect(c.color).toMatch(/^#[0-9a-f]{6}$/i);
       expect(c.solfeggioHz).toBeGreaterThan(0);
     }
+    expect(FREQUENCY_REGISTRY.find((n) => n.key === 'soul')?.baseFrequencyHz).toBe(1074);
   });
 
   it('generates sound library sessions with distinct per-node colours', () => {
     const sessions = buildSoundLibrarySessions(300);
     expect(sessions).toHaveLength(9);
     const colors = new Set(sessions.map((s) => s.color));
-    // Every node should resolve to its own hue family — not one purple for all
-    expect(colors.size).toBeGreaterThanOrEqual(7);
-    expect(sessions.find((s) => s.chakra === 'heart')?.hz).toBe(639);
+    expect(colors.size).toBe(9);
+    expect(sessions.find((s) => s.chakra === 'heart')?.color.toUpperCase()).toBe('#36F5A6');
+    expect(sessions.find((s) => s.chakra === 'soul')?.hz).toBe(1074);
   });
 });
 

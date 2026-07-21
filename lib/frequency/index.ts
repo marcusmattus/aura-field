@@ -1,4 +1,11 @@
-export { colorFromFrequency, glowFromFrequency, hexFromFrequency, hueFromFrequency } from '@/lib/frequency/color';
+export {
+  FREQUENCY_COLOR_ANCHORS,
+  colorFromFrequency,
+  glowFromFrequency,
+  hexFromFrequency,
+  hueFromFrequency,
+  rgbFromFrequency,
+} from '@/lib/frequency/color';
 export type { DerivedPalette, Rgb } from '@/lib/frequency/color';
 export {
   FREQUENCY_BY_KEY,
