@@ -110,6 +110,17 @@ function levelForXp(xp: number): number {
   return Math.max(1, Math.floor(xp / 400) + 1);
 }
 
+function isProfileComplete(profile: UserProfile | null): boolean {
+  if (!profile) return false;
+  return Boolean(
+    profile.displayName.trim() &&
+      profile.focusAreas.length > 0 &&
+      profile.baselineMood !== null &&
+      profile.experienceLevel &&
+      profile.primaryIntention.trim(),
+  );
+}
+
 const initialStates: ChakraState[] = CHAKRA_ORDER.map((key) => ({ key, energy: 50, trend7d: 0 }));
 
 /** Demo entries so a fresh install shows a living field (matches the kit). */
@@ -489,7 +500,7 @@ export const useChakraStore = create<ChakraOSState>()(
         set({
           authenticated: true,
           profile,
-          profileComplete: Boolean(profile?.displayName),
+          profileComplete: isProfileComplete(profile),
         });
         // If a returning member already set a primary intention, mirror it into
         // the local 30-day intention so the You tab stays coherent.
@@ -500,8 +511,9 @@ export const useChakraStore = create<ChakraOSState>()(
 
       saveUserProfile: async (patch) => {
         if (!hasBackend) {
+          const existingProfile = get().profile;
           const profile: UserProfile = {
-            id: 'local-profile',
+            id: existingProfile?.id || `local-${uid()}`,
             email: '',
             displayName: patch.displayName,
             birthdate: patch.birthdate,
@@ -512,7 +524,7 @@ export const useChakraStore = create<ChakraOSState>()(
           };
           set((s) => ({
             profile,
-            profileComplete: Boolean(profile.displayName),
+            profileComplete: isProfileComplete(profile),
             intention: profile.primaryIntention
               ? { ...s.intention, text: profile.primaryIntention }
               : s.intention,
@@ -523,7 +535,7 @@ export const useChakraStore = create<ChakraOSState>()(
         if (!saved) return false;
         set((s) => ({
           profile: saved,
-          profileComplete: Boolean(saved.displayName),
+          profileComplete: isProfileComplete(saved),
           intention: saved.primaryIntention
             ? { ...s.intention, text: saved.primaryIntention }
             : s.intention,
