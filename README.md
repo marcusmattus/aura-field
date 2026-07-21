@@ -136,7 +136,7 @@ npx expo start --dev-client
 **Expo / project**
 - [ ] Expo account + `npx eas login` (or CI `EXPO_TOKEN`)
 - [ ] Project linked: `npx eas init` → sets `EAS_PROJECT_ID` / `extra.eas.projectId`
-- [ ] Static `app.json` present (required for Expo launch tooling) + dynamic overlays in `app.config.ts`
+- [ ] Static `app.json` present (required for Expo launch tooling) + dynamic overlays in `app.config.js`
 - [ ] Bundle IDs set: iOS `com.aurafield.app`, Android `com.aurafield.app` (override with `BILT_IOS_BUNDLE_ID` / `BILT_ANDROID_PACKAGE`)
 
 **iOS submit (App Store / TestFlight)**
