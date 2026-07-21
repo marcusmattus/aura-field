@@ -513,14 +513,14 @@ export const useChakraStore = create<ChakraOSState>()(
         if (!hasBackend) {
           const existingProfile = get().profile;
           const profile: UserProfile = {
-            id: existingProfile?.id || `local-${uid()}`,
+            id: existingProfile?.id || `local-${Date.now().toString(36)}`,
             email: '',
-            displayName: patch.displayName,
-            birthdate: patch.birthdate,
-            focusAreas: patch.focusAreas,
-            baselineMood: patch.baselineMood,
-            experienceLevel: patch.experienceLevel,
-            primaryIntention: patch.primaryIntention,
+            displayName: patch.displayName ?? existingProfile?.displayName ?? '',
+            birthdate: patch.birthdate ?? existingProfile?.birthdate ?? null,
+            focusAreas: patch.focusAreas ?? existingProfile?.focusAreas ?? [],
+            baselineMood: patch.baselineMood ?? existingProfile?.baselineMood ?? null,
+            experienceLevel: patch.experienceLevel ?? existingProfile?.experienceLevel ?? null,
+            primaryIntention: patch.primaryIntention ?? existingProfile?.primaryIntention ?? '',
           };
           set((s) => ({
             profile,
