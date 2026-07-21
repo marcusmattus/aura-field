@@ -50,6 +50,14 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Sync EAS Submit config
+        if: ${{ inputs.submit == true && inputs.profile == 'production' }}
+        env:
+          BILT_APP_STORE_APP_ID: ${{ secrets.BILT_APP_STORE_APP_ID }}
+          BILT_APPLE_TEAM_ID: ${{ secrets.BILT_APPLE_TEAM_ID }}
+          EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
+        run: npm run eas:sync-submit
+
       - name: Build
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -57,6 +65,9 @@ jobs:
           EXPO_OWNER: ${{ secrets.EXPO_OWNER }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          BILT_APP_STORE_APP_ID: ${{ secrets.BILT_APP_STORE_APP_ID }}
+          BILT_APPLE_TEAM_ID: ${{ secrets.BILT_APPLE_TEAM_ID }}
+          EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
         run: |
           ARGS=(--profile "${{ inputs.profile }}" --platform "${{ inputs.platform }}" --non-interactive)
           if [ "${{ inputs.submit }}" = "true" ] && [ "${{ inputs.profile }}" = "production" ]; then
