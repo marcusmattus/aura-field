@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Aura Field",
-    "slug": "aura-field",
+    "slug": "chakraos",
+    "owner": "chakraos",
     "newArchEnabled": true,
     "version": "1.0.0",
     "orientation": "portrait",
@@ -29,6 +30,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b41c9366-6ac4-4320-aa9f-a2e1f3aaca3a"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b41c9366-6ac4-4320-aa9f-a2e1f3aaca3a",
+      "fallbackToCacheTimeout": 0
     },
     "plugins": [
       "expo-router",
