@@ -1,25 +1,21 @@
-import type { ConfigContext, ExpoConfig } from '@expo/config';
-
-type ExpoPlugins = NonNullable<ExpoConfig['plugins']>;
-
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
 const OWNER = process.env.EXPO_OWNER ?? process.env.EXPO_PUBLIC_EXPO_OWNER;
 
-export default ({ config }: ConfigContext): ExpoConfig => {
-  const nativePlugins: ExpoPlugins =
+/** @param {{ config: Record<string, any> }} ctx */
+module.exports = ({ config }) => {
+  const nativePlugins =
     process.env.EXPO_PLATFORM === 'native'
-      ? [['expo-dev-client', { launchMode: 'most-recent' }], 'react-native-maps']
+      ? [['expo-dev-client', { launchMode: 'most-recent' }]]
       : [];
 
   const existingEas =
-    typeof config.extra?.eas === 'object' && config.extra.eas !== null
-      ? (config.extra.eas as Record<string, unknown>)
-      : {};
+    typeof config.extra?.eas === 'object' && config.extra.eas !== null ? config.extra.eas : {};
 
-  const expoConfig: ExpoConfig = {
+  const expoConfig = {
     ...config,
     name: config.name ?? 'Aura Field',
-    slug: config.slug ?? 'aura-field',
+    // Must match Expo project linked to EAS_PROJECT_ID (expo.dev/@chakraos/chakraos).
+    slug: 'chakraos',
     version: process.env.BILT_APP_VERSION ?? config.version ?? '1.0.0',
     ios: {
       ...config.ios,
