@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { atmosphereForKey } from '../lib/frequency/atmosphere';
-import { colorFromFrequency, hueFromFrequency } from '../lib/frequency/color';
+import { colorFromFrequency } from '../lib/frequency/color';
 import {
   FREQUENCY_REGISTRY,
   buildSoundLibrarySessions,

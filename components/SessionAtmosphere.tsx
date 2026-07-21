@@ -197,6 +197,7 @@ export function SessionAtmosphereView({ atmosphere, active }: Props) {
 
         {atmosphere.waveStrength > 0.2 ? (
           <Group>
+            {/* oxlint-disable react/style-prop-object -- Skia style prop is a string enum, not RN StyleProp */}
             <Circle
               cx={width / 2}
               cy={height * 0.42}
@@ -215,13 +216,14 @@ export function SessionAtmosphereView({ atmosphere, active }: Props) {
               strokeWidth={1.4}
               opacity={waveOpacity}
             />
+            {/* oxlint-enable react/style-prop-object */}
           </Group>
         ) : null}
 
         {!minimal && atmosphere.particleCount > 0
-          ? seeds.map((seed, index) => (
+          ? seeds.map((seed) => (
               <Particle
-                key={`p-${index}`}
+                key={`p-${seed.x.toFixed(4)}-${seed.y.toFixed(4)}-${seed.phase.toFixed(4)}`}
                 seed={seed}
                 color={atmosphere.particle}
                 progress={progress}
