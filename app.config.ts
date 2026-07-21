@@ -14,7 +14,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const expoConfig: ExpoConfig = {
     ...config,
     name: 'Aura Field',
-    slug: 'aura-field',
+    // Must match the Expo project linked to EAS_PROJECT_ID (expo.dev/@chakraos/chakraos).
+    slug: 'chakraos',
     newArchEnabled: true,
     version: process.env.BILT_APP_VERSION ?? '1.0.0',
     orientation: 'portrait',
