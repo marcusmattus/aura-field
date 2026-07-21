@@ -44,6 +44,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify eas.json
+        run: |
+          test -f eas.json || (echo "eas.json missing at repo root — run: eas build:configure" && exit 1)
+          npm run eas:doctor
+          python3 -m json.tool eas.json > /dev/null
+
       - name: Setup Expo / EAS
         uses: expo/expo-github-action@v8
         with:
