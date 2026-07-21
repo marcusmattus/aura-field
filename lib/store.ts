@@ -110,15 +110,26 @@ function levelForXp(xp: number): number {
   return Math.max(1, Math.floor(xp / 400) + 1);
 }
 
+function safeText(value: string | null | undefined): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function isProfileComplete(profile: UserProfile | null): boolean {
   if (!profile) return false;
   return Boolean(
-    profile.displayName.trim() &&
+    safeText(profile.displayName) &&
       profile.focusAreas.length > 0 &&
       profile.baselineMood !== null &&
       profile.experienceLevel &&
-      profile.primaryIntention.trim(),
+      safeText(profile.primaryIntention),
   );
+}
+
+function localProfileId(existingId?: string): string {
+  if (existingId) return existingId;
+  const uuid = globalThis.crypto?.randomUUID?.();
+  if (uuid) return `local-${uuid}`;
+  return `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 const initialStates: ChakraState[] = CHAKRA_ORDER.map((key) => ({ key, energy: 50, trend7d: 0 }));
@@ -513,7 +524,7 @@ export const useChakraStore = create<ChakraOSState>()(
         if (!hasBackend) {
           const existingProfile = get().profile;
           const profile: UserProfile = {
-            id: existingProfile?.id || `local-${Date.now().toString(36)}`,
+            id: localProfileId(existingProfile?.id),
             email: '',
             displayName: patch.displayName ?? existingProfile?.displayName ?? '',
             birthdate: patch.birthdate ?? existingProfile?.birthdate ?? null,
