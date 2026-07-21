@@ -1,6 +1,6 @@
 /**
- * Frequency → color / visual derivation.
- * No hardcoded session colours: everything derives from carrier + beat Hz.
+ * Frequency → color derivation.
+ * Exact hex anchors (authority) at each carrier Hz; unknown Hz interpolate in RGB.
  */
 
 export interface Rgb {
@@ -25,50 +25,39 @@ export interface DerivedPalette {
   /** Brainwave-ish motion scale */
   motionScale: number;
   rgb: Rgb;
+  /** Resolved hue degrees 0–360 (from derived RGB) */
+  hue: number;
 }
+
+/** Exact carrier → colour table (product authority). */
+export const FREQUENCY_COLOR_ANCHORS: ReadonlyArray<{ hz: number; hex: string; key: string }> = [
+  { hz: 174, hex: '#C0433A', key: 'earth' },
+  { hz: 396, hex: '#FF4D5E', key: 'root' },
+  { hz: 417, hex: '#FF8A3D', key: 'sacral' },
+  { hz: 528, hex: '#FFD23D', key: 'solar' },
+  { hz: 639, hex: '#36F5A6', key: 'heart' },
+  { hz: 741, hex: '#3DB6FF', key: 'throat' },
+  { hz: 852, hex: '#6B6BFF', key: 'third' },
+  { hz: 963, hex: '#B14DFF', key: 'crown' },
+  { hz: 1074, hex: '#EAF0FF', key: 'soul' },
+];
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-function hslToRgb(h: number, s: number, l: number): Rgb {
-  const sat = s / 100;
-  const light = l / 100;
-  const c = (1 - Math.abs(2 * light - 1)) * sat;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = light - c / 2;
-  let rp = 0;
-  let gp = 0;
-  let bp = 0;
-  if (h < 60) {
-    rp = c;
-    gp = x;
-  } else if (h < 120) {
-    rp = x;
-    gp = c;
-  } else if (h < 180) {
-    gp = c;
-    bp = x;
-  } else if (h < 240) {
-    gp = x;
-    bp = c;
-  } else if (h < 300) {
-    rp = x;
-    bp = c;
-  } else {
-    rp = c;
-    bp = x;
-  }
+function hexToRgb(hex: string): Rgb {
+  const h = hex.replace('#', '');
   return {
-    r: Math.round((rp + m) * 255),
-    g: Math.round((gp + m) * 255),
-    b: Math.round((bp + m) * 255),
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
   };
 }
 
 function rgbToHex({ r, g, b }: Rgb): string {
-  const h = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${h(r)}${h(g)}${h(b)}`;
+  const h = (n: number) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`.toUpperCase();
 }
 
 function withAlpha(hex: string, alpha: number): string {
@@ -76,31 +65,86 @@ function withAlpha(hex: string, alpha: number): string {
   return `${hex}${a}`;
 }
 
-/**
- * Map audible / solfeggio carrier Hz to a hue on a warm→cool continuum.
- * ~170 Hz → deep red/brown, ~400 → red-orange, ~528 → gold-green,
- * ~640 → green, ~740 → blue, ~850 → indigo, ~960 → violet.
- */
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function lerpRgb(a: Rgb, b: Rgb, t: number): Rgb {
+  return {
+    r: lerp(a.r, b.r, t),
+    g: lerp(a.g, b.g, t),
+    b: lerp(a.b, b.b, t),
+  };
+}
+
+function mixToward(rgb: Rgb, target: Rgb, t: number): Rgb {
+  return lerpRgb(rgb, target, t);
+}
+
+function rgbToHue({ r, g, b }: Rgb): number {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const d = max - min;
+  if (d === 0) return 0;
+  let h = 0;
+  if (max === rn) h = ((gn - bn) / d) % 6;
+  else if (max === gn) h = (bn - rn) / d + 2;
+  else h = (rn - gn) / d + 4;
+  h *= 60;
+  if (h < 0) h += 360;
+  return h;
+}
+
+function lighten(rgb: Rgb, amount: number): Rgb {
+  return mixToward(rgb, { r: 255, g: 255, b: 255 }, amount);
+}
+
+function darken(rgb: Rgb, amount: number): Rgb {
+  return mixToward(rgb, { r: 0, g: 0, b: 0 }, amount);
+}
+
+/** Resolve primary RGB for a carrier frequency from the authority table. */
+export function rgbFromFrequency(hz: number): Rgb {
+  const f = clamp(hz, 100, 2000);
+  const anchors = FREQUENCY_COLOR_ANCHORS;
+
+  for (const anchor of anchors) {
+    if (Math.abs(anchor.hz - f) < 1.5) return hexToRgb(anchor.hex);
+  }
+
+  // Soul band: anything at/above 1074 Hz
+  if (f >= 1074) return hexToRgb('#EAF0FF');
+
+  if (f <= anchors[0].hz) return hexToRgb(anchors[0].hex);
+  if (f >= anchors[anchors.length - 1].hz) return hexToRgb(anchors[anchors.length - 1].hex);
+
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const lo = anchors[i];
+    const hi = anchors[i + 1];
+    if (f >= lo.hz && f <= hi.hz) {
+      const t = (f - lo.hz) / (hi.hz - lo.hz);
+      return lerpRgb(hexToRgb(lo.hex), hexToRgb(hi.hex), t);
+    }
+  }
+
+  return hexToRgb(anchors[anchors.length - 1].hex);
+}
+
 export function hueFromFrequency(hz: number): number {
-  const f = clamp(hz, 100, 1200);
-  // log-ish spread across the solfeggio range
-  const t = Math.log(f / 100) / Math.log(1200 / 100);
-  return clamp(t * 300, 0, 300); // 0° red → ~300° magenta/violet
+  return rgbToHue(rgbFromFrequency(hz));
 }
 
 export function colorFromFrequency(hz: number, beatHz = 8): DerivedPalette {
-  const hue = hueFromFrequency(hz);
-  const sat = clamp(62 + beatHz * 0.35, 55, 85);
-  const light = clamp(48 + (hz / 2000) * 20, 38, 68);
-  const rgb = hslToRgb(hue, sat, light);
+  const rgb = rgbFromFrequency(hz);
   const color = rgbToHex(rgb);
-  const softRgb = hslToRgb(hue, sat * 0.55, clamp(light + 18, 40, 82));
-  const soft = rgbToHex(softRgb);
-  const glowRgb = hslToRgb(hue, clamp(sat + 8, 0, 95), clamp(light + 10, 40, 75));
-  const glow = rgbToHex(glowRgb);
-  const deep = rgbToHex(hslToRgb(hue, sat, clamp(light - 22, 12, 40)));
-  const mid = rgbToHex(hslToRgb(hue, sat * 0.9, light));
-  const bright = rgbToHex(hslToRgb(hue, sat * 0.7, clamp(light + 22, 50, 88)));
+  const soft = rgbToHex(lighten(rgb, 0.35));
+  const glow = rgbToHex(lighten(rgb, 0.15));
+  const deep = rgbToHex(darken(rgb, 0.45));
+  const mid = color;
+  const bright = rgbToHex(lighten(rgb, 0.28));
 
   return {
     color,
@@ -111,6 +155,7 @@ export function colorFromFrequency(hz: number, beatHz = 8): DerivedPalette {
     glowIntensity: clamp(0.35 + beatHz / 80, 0.3, 0.95),
     motionScale: clamp(0.5 + beatHz / 40, 0.4, 1.6),
     rgb,
+    hue: rgbToHue(rgb),
   };
 }
 
