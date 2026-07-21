@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { atmosphereForKey } from '../lib/frequency/atmosphere';
 import { colorFromFrequency, hueFromFrequency } from '../lib/frequency/color';
 import {
   FREQUENCY_REGISTRY,
@@ -66,6 +67,19 @@ describe('frequency → color', () => {
     expect(colors.size).toBe(9);
     expect(sessions.find((s) => s.chakra === 'heart')?.color.toUpperCase()).toBe('#36F5A6');
     expect(sessions.find((s) => s.chakra === 'soul')?.hz).toBe(1074);
+  });
+
+  it('transforms session atmosphere per frequency signature', () => {
+    expect(atmosphereForKey('earth').motion).toBe('breath-slow');
+    expect(atmosphereForKey('earth').particleCount).toBeGreaterThan(20);
+    expect(atmosphereForKey('solar').uiMode).toBe('warm');
+    expect(atmosphereForKey('solar').bloom).toBeGreaterThan(0.9);
+    expect(atmosphereForKey('heart').motion).toBe('breath-gentle');
+    expect(atmosphereForKey('throat').motion).toBe('ripple-fast');
+    expect(atmosphereForKey('throat').waveStrength).toBe(1);
+    expect(atmosphereForKey('third').control).toBe('#9B6BFF');
+    expect(atmosphereForKey('crown').uiMode).toBe('minimal');
+    expect(atmosphereForKey('crown').motionScale).toBeLessThan(0.5);
   });
 });
 

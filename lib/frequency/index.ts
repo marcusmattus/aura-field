@@ -16,3 +16,5 @@ export {
   toChakra,
 } from '@/lib/frequency/registry';
 export type { FrequencyNode } from '@/lib/frequency/registry';
+export { atmosphereForKey } from '@/lib/frequency/atmosphere';
+export type { AtmosphereMotion, AtmospherePreset } from '@/lib/frequency/atmosphere';
