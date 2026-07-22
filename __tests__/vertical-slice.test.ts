@@ -152,4 +152,27 @@ describe('edge function contracts (shape)', () => {
     expect(res.ok).toBe(true);
     expect(res.transcript.length).toBeGreaterThan(0);
   });
+
+  it('ai-embed match payload shape', () => {
+    const res = {
+      ok: true,
+      matches: [{ summary: 'felt open at heart', similarity: 0.82 }],
+    };
+    expect(res.matches[0].similarity).toBeGreaterThan(0.5);
+  });
+});
+
+describe('offline outbox contract', () => {
+  it('supports journal payload with voice fields for flush', () => {
+    const payload = {
+      body: 'offline note',
+      modality: 'voice' as const,
+      voiceUrl: 'file://note.m4a',
+      voiceDurationS: 12,
+      seededChakra: 'heart' as const,
+    };
+    expect(payload.modality).toBe('voice');
+    expect(payload.voiceUrl).toMatch(/^file:/);
+    expect(payload.voiceDurationS).toBeGreaterThan(0);
+  });
 });

@@ -31,7 +31,7 @@ const INK = '#e9ecf5';
 const MUTE = '#8a90a6';
 
 type Mode = 'signup' | 'signin';
-type Step = 'credentials' | 'verify';
+type Step = 'credentials' | 'verify' | 'magic-sent';
 
 function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -140,7 +140,7 @@ export default function AuthScreen() {
       <StatusBar style="light" />
 
       <View className="pt-safe-offset-3 flex-row items-center justify-between px-5">
-        {step === 'verify' ? (
+        {step === 'verify' || step === 'magic-sent' ? (
           <Pressable
             hitSlop={12}
             onPress={() => {
@@ -241,7 +241,7 @@ export default function AuthScreen() {
                     return;
                   }
                   setError(null);
-                  setStep('verify');
+                  setStep('magic-sent');
                 }}
               >
                 <Mono style={{ color: MUTE }}>SEND MAGIC LINK</Mono>
@@ -291,6 +291,34 @@ export default function AuthScreen() {
                     : 'New here? Create an account'}
                 </Text>
               </Pressable>
+            </View>
+          ) : step === 'magic-sent' ? (
+            <View className="mt-2">
+              <Mono style={{ color: ACCENT }}>CHAKRAOS · MAGIC LINK</Mono>
+              <Display size={30} className="mt-2">
+                Check your email
+              </Display>
+              <Text className="text-mute mt-3" style={{ fontSize: 15, lineHeight: 23 }}>
+                We sent a sign-in link to{' '}
+                <Text className="text-ink" style={{ fontSize: 15 }}>
+                  {email.trim()}
+                </Text>
+                . Open it on this device to continue — no code needed.
+              </Text>
+              <Pressable
+                className="mt-6 items-center"
+                hitSlop={8}
+                onPress={async () => {
+                  setBusy(true);
+                  setError(null);
+                  const res = await sendMagicLink(email.trim());
+                  setBusy(false);
+                  if (!res.ok) setError(res.error);
+                }}
+              >
+                <Mono style={{ color: ACCENT }}>{busy ? 'SENDING…' : 'RESEND MAGIC LINK'}</Mono>
+              </Pressable>
+              {error ? <ErrorText>{error}</ErrorText> : null}
             </View>
           ) : (
             <View className="mt-2">
