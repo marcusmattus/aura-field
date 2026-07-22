@@ -227,11 +227,12 @@ export const useChakraStore = create<ChakraOSState>()(
       addEntry: async (body, modality, opts) => {
         const seededChakra = opts?.seededChakra;
         const now = Date.now();
+        let content = body;
         // optimistic local analysis
-        let analysis = analyzeEntry(body, modality, seededChakra);
+        let analysis = analyzeEntry(content, modality, seededChakra);
         const entry: JournalEntry = {
           id: uid(),
-          body,
+          body: content,
           modality,
           createdAt: now,
           tags: analysis.tags,
@@ -268,7 +269,7 @@ export const useChakraStore = create<ChakraOSState>()(
               voicePath = await uploadVoiceNote(opts.voiceUrl);
             }
             const row = await createJournalEntry({
-              body,
+              body: content,
               modality,
               themes: analysis.themes,
               tags: analysis.tags,
@@ -283,14 +284,27 @@ export const useChakraStore = create<ChakraOSState>()(
 
             if (voicePath) {
               const { data: userData } = await supabase!.auth.getUser();
-              void invokeFunction('transcribe-voice', {
+              const transcribed = await invokeFunction<{
+                ok?: boolean;
+                transcript?: string;
+              }>('transcribe-voice', {
                 storagePath: voicePath,
                 journalEntryId: row.id,
                 userId: userData.user?.id,
               });
+              const transcript = transcribed.data?.transcript?.trim();
+              if (transcript) {
+                content = transcript;
+                set((s) => ({
+                  entries: s.entries.map((e) =>
+                    e.id === row.id ? { ...e, body: transcript } : e,
+                  ),
+                }));
+                get().recompute();
+              }
             }
 
-            const remote = await remoteAnalyze(body, modality, seededChakra);
+            const remote = await remoteAnalyze(content, modality, seededChakra);
             if (remote) {
               analysis = remote;
               set((s) => ({
@@ -321,7 +335,7 @@ export const useChakraStore = create<ChakraOSState>()(
                 userId: userData.user.id,
                 sourceType: 'journal',
                 sourceId: row.id,
-                content: body,
+                content: content,
                 fieldScores: Object.fromEntries(get().states.map((s) => [s.key, s.energy])),
                 period: 'interaction',
               });
@@ -331,7 +345,7 @@ export const useChakraStore = create<ChakraOSState>()(
             await enqueueOutbox({
               type: 'journal',
               payload: {
-                body,
+                body: content,
                 modality,
                 seededChakra,
                 voiceUrl: opts?.voiceUrl,
@@ -341,7 +355,7 @@ export const useChakraStore = create<ChakraOSState>()(
           }
         } else {
           try {
-            const remote = await remoteAnalyze(body, modality, seededChakra);
+            const remote = await remoteAnalyze(content, modality, seededChakra);
             if (remote) {
               analysis = remote;
               set((s) => ({

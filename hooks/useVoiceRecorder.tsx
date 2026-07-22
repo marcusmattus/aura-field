@@ -9,8 +9,8 @@ import { useCallback, useState } from 'react';
 
 /**
  * Voice-note recording for the Journal composer. Captures audio to a local
- * file URI on this device (the words are typed by the user — no auto
- * transcription). Returns the URI + length so the entry can keep its recording.
+ * file URI; on save the cloud path uploads to Storage and `transcribe-voice`
+ * (Whisper) fills the journal body/transcript.
  */
 export function useVoiceRecorder() {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);

@@ -183,47 +183,34 @@ export default function CoachScreen() {
 
     let usedRemote = false;
     if (hasBackend) {
-      const { response, error } = await invokeFunction('ai-chat', {
-        messages: chatMessages,
-        mode,
-        memories,
-        fieldSummary,
-        stream: true,
-        regenerate: Boolean(opts?.regenerate),
-        continue: Boolean(opts?.continue),
-      });
-
-      if (response?.body) {
-        usedRemote = true;
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() ?? '';
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed.startsWith('data:')) continue;
-              const data = trimmed.slice(5).trim();
-              if (data === '[DONE]') continue;
-              try {
-                const parsed = JSON.parse(data) as { delta?: string };
-                if (parsed.delta) applyDelta(parsed.delta);
-              } catch {
-                /* ignore */
-              }
-            }
-          }
-        } catch {
-          usedRemote = false;
-        }
-      } else if (!error) {
-        /* empty */
-      }
+      const { streamCoachChat } = await import('@/lib/ai');
+      await streamCoachChat(
+        async (body) => {
+          const { response } = await invokeFunction('ai-chat', {
+            ...body,
+            stream: true,
+            regenerate: Boolean(opts?.regenerate),
+            continue: Boolean(opts?.continue),
+          });
+          return response;
+        },
+        {
+          messages: chatMessages,
+          mode,
+          memories,
+          fieldSummary,
+          regenerate: Boolean(opts?.regenerate),
+        },
+        {
+          onDelta: (delta) => {
+            usedRemote = true;
+            applyDelta(delta);
+          },
+          onError: () => {
+            usedRemote = false;
+          },
+        },
+      );
     }
 
     if (!usedRemote || !streamed) {

@@ -65,15 +65,18 @@ export default function JournalScreen() {
 
   const submit = () => {
     const body = text.trim();
-    if (!body) return;
-    void addEntry(body, voiceMode ? 'voice' : 'text', {
+    const hasVoice = voiceMode && Boolean(voiceNote?.uri);
+    if (!body && !hasVoice) return;
+    void addEntry(body || '[Voice note — transcribing…]', voiceMode || hasVoice ? 'voice' : 'text', {
       seededChakra: seeded,
-      voiceUrl: voiceMode ? (voiceNote?.uri ?? undefined) : undefined,
-      voiceDurationS: voiceMode ? voiceNote?.durationS : undefined,
+      voiceUrl: hasVoice ? voiceNote?.uri : undefined,
+      voiceDurationS: hasVoice ? voiceNote?.durationS : undefined,
     });
     setText('');
     setVoiceNote(null);
   };
+
+  const canSubmit = Boolean(text.trim()) || Boolean(voiceMode && voiceNote?.uri);
 
   const weekEntries = entries.filter((e) => e.createdAt > Date.now() - 7 * 86_400_000);
 
@@ -149,11 +152,11 @@ export default function JournalScreen() {
               </View>
               <Pressable
                 onPress={submit}
-                disabled={!text.trim()}
+                disabled={!canSubmit}
                 className="h-9 w-9 items-center justify-center rounded-full"
-                style={{ backgroundColor: text.trim() ? ACCENT : '#1e2535' }}
+                style={{ backgroundColor: canSubmit ? ACCENT : '#1e2535' }}
               >
-                <Send color={text.trim() ? '#0a0e18' : '#565c72'} size={15} />
+                <Send color={canSubmit ? '#0a0e18' : '#565c72'} size={15} />
               </Pressable>
             </View>
             {voiceMode ? (
@@ -183,7 +186,7 @@ export default function JournalScreen() {
                         VOICE NOTE SAVED · {voiceNote.durationS}s
                       </Mono>
                     ) : (
-                      <Mono>TAP TO RECORD · THEN TYPE WHAT YOU SAID</Mono>
+                      <Mono>TAP TO RECORD · WHISPER TRANSCRIBES ON SAVE</Mono>
                     )}
                     {recorder.denied ? (
                       <Text

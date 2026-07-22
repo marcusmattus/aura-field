@@ -183,6 +183,28 @@ npm run eas:submit
 Profiles live in [`eas.json`](eas.json): `development`, `preview`, `production` (+ `development-simulator`).  
 Production uses `distribution: "store"` and Android `.aab` for store submission.
 
+## Deploy checklist (vertical slice)
+
+```bash
+# 1) Link + migrate
+supabase link --project-ref YOUR_REF
+supabase db push
+
+# 2) Edge secrets + deploy
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... AI_PROVIDER=anthropic
+supabase functions deploy journal-analyze coach-respond ai-chat ai-embed transcribe-voice reflect
+
+# 3) Auth providers (dashboard)
+# Enable Email, Magic Link, Apple, Google; redirect: aura-field://auth/callback
+
+# 4) App env + EAS
+cp .env.example .env   # fill EXPO_PUBLIC_SUPABASE_*
+npm run eas:doctor
+npm run eas:build:preview
+```
+
+Verify locally: `npm run typecheck && npm test && npm run lint`.
+
 ## Privacy & safety
 
 - RLS on every user table (`auth.uid() = user_id`)

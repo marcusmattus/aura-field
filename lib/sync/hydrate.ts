@@ -1,23 +1,28 @@
 /**
- * Hydrate cloud journals + chakra scores into the Zustand cache,
- * and flush the offline outbox when online.
+ * Hydrate cloud journals + chakra scores + check-ins into the Zustand cache,
+ * and flush the offline outbox when online / on app foreground.
  */
 
 import { useEffect } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 
 import {
   createJournalEntry,
   fetchLatestChakraScores,
+  fetchTodayCheckIns,
+  invokeFunction,
   listFrequencySessions,
   listJournalEntries,
   recordFrequencySession,
   trackAnalytics,
+  updateJournalEntry,
+  uploadVoiceNote,
   upsertDailyCheckIn,
   type DailyCheckInInput,
 } from '@/lib/db';
 import { isChakraKey } from '@/lib/chakras';
-import { hasBackend } from '@/lib/supabase';
+import { hasBackend, supabase } from '@/lib/supabase';
 import { useChakraStore } from '@/lib/store';
 import { peekOutbox, removeOutboxOp } from '@/lib/sync/outbox';
 import type { ChakraKey, CompletedSession, EntryTag, JournalEntry, Modality } from '@/lib/types';
@@ -72,6 +77,13 @@ export function useCloudHydration(enabled: boolean) {
     staleTime: 30_000,
   });
 
+  const checkins = useQuery({
+    queryKey: ['checkins'],
+    enabled: enabled && hasBackend,
+    queryFn: () => fetchTodayCheckIns(),
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     if (journals.data?.length) {
       syncEntriesFromCloud(journals.data.map(rowToEntry));
@@ -99,13 +111,27 @@ export function useCloudHydration(enabled: boolean) {
     if (mapped.length) syncSessionsFromCloud(mapped);
   }, [sessions.data, syncSessionsFromCloud]);
 
+  // Keep query subscribed so check-in invalidation refreshes cloud data.
+  useEffect(() => {
+    void checkins.data;
+  }, [checkins.data]);
+
   useEffect(() => {
     if (!enabled || !hasBackend) return;
     void flushOutbox();
-  }, [enabled, journals.isSuccess]);
+  }, [enabled, journals.isSuccess, checkins.isSuccess]);
+
+  useEffect(() => {
+    if (!enabled || !hasBackend) return undefined;
+    const onChange = (state: AppStateStatus) => {
+      if (state === 'active') void flushOutbox();
+    };
+    const sub = AppState.addEventListener('change', onChange);
+    return () => sub.remove();
+  }, [enabled]);
 }
 
-async function flushOutbox() {
+export async function flushOutbox() {
   const ops = await peekOutbox();
   for (const op of ops) {
     try {
@@ -116,12 +142,33 @@ async function flushOutbox() {
           body: string;
           modality?: Modality;
           seededChakra?: ChakraKey;
+          voiceUrl?: string;
+          voiceDurationS?: number;
         };
-        await createJournalEntry({
-          body: p.body,
+        let voicePath: string | undefined;
+        let body = p.body;
+        if (p.voiceUrl) {
+          voicePath = await uploadVoiceNote(p.voiceUrl);
+        }
+        const row = await createJournalEntry({
+          body,
           modality: p.modality,
           seededChakra: p.seededChakra,
+          voiceStoragePath: voicePath,
+          voiceDurationS: p.voiceDurationS,
         });
+        if (voicePath && supabase) {
+          const { data: userData } = await supabase.auth.getUser();
+          const transcribed = await invokeFunction<{ transcript?: string }>('transcribe-voice', {
+            storagePath: voicePath,
+            journalEntryId: row.id,
+            userId: userData.user?.id,
+          });
+          const transcript = transcribed.data?.transcript?.trim();
+          if (transcript && transcript !== body) {
+            await updateJournalEntry(row.id, { body: transcript, transcript });
+          }
+        }
       } else if (op.type === 'frequency_session') {
         const p = op.payload as {
           chakra: ChakraKey;
@@ -136,7 +183,10 @@ async function flushOutbox() {
           durationS: p.durationS,
         });
       } else if (op.type === 'analytics') {
-        await trackAnalytics(String(op.payload.eventName), (op.payload.properties as Record<string, unknown>) ?? {});
+        await trackAnalytics(
+          String(op.payload.eventName),
+          (op.payload.properties as Record<string, unknown>) ?? {},
+        );
       }
       await removeOutboxOp(op.id);
     } catch {
