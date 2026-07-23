@@ -13,21 +13,28 @@ if [[ -z "${EXPO_TOKEN:-}" ]]; then
 fi
 
 export EXPO_PLATFORM=native
-
-if ! npx eas-cli whoami >/dev/null 2>&1; then
-  echo "Authenticating with EXPO_TOKEN..."
-fi
-
-# Link project if needed (non-interactive when already configured)
-if ! npx expo config --type public 2>/dev/null | grep -q projectId; then
-  echo "Linking EAS project..."
-  npx eas-cli init --non-interactive --force 2>/dev/null || npx eas-cli init --non-interactive || true
-fi
-
 PLATFORM="${1:-all}"
-echo "Building + auto-submitting production ($PLATFORM)..."
-npx eas-cli build \
-  --profile production \
-  --platform "$PLATFORM" \
-  --auto-submit \
-  --non-interactive
+
+build_one() {
+  local p="$1"
+  echo "Building + auto-submitting production ($p)..."
+  # Auto-submit may fail without store credentials; still create the build.
+  if ! npx eas-cli build \
+    --profile production \
+    --platform "$p" \
+    --auto-submit \
+    --non-interactive; then
+    echo "Auto-submit path failed for $p; retrying build only..."
+    npx eas-cli build \
+      --profile production \
+      --platform "$p" \
+      --non-interactive
+  fi
+}
+
+if [[ "$PLATFORM" == "all" ]]; then
+  build_one android
+  build_one ios
+else
+  build_one "$PLATFORM"
+fi
