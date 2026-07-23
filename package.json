@@ -14,7 +14,7 @@
     "eas:build:preview": "eas build --profile preview --platform all --non-interactive",
     "eas:build:production": "eas build --profile production --platform all --non-interactive",
     "eas:submit": "eas submit --profile production --platform all --latest --non-interactive",
-    "eas:build:submit": "eas build --profile production --platform all --auto-submit --non-interactive",
+    "eas:build:submit": "bash scripts/eas-build-submit.sh",
     "eas:update:preview": "eas update --channel preview --non-interactive",
     "lint": "oxlint --type-aware --type-check",
     "lint:css": "node scripts/lint-css.mjs",
