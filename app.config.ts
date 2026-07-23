@@ -2,13 +2,18 @@ import type { ConfigContext, ExpoConfig } from '@expo/config';
 
 type ExpoPlugins = NonNullable<ExpoConfig['plugins']>;
 
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
-const OWNER = process.env.EXPO_OWNER ?? process.env.EXPO_PUBLIC_EXPO_OWNER;
+const EAS_PROJECT_ID =
+  process.env.EAS_PROJECT_ID ??
+  process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+  '72850474-28aa-405f-b427-7928da852b99';
+const OWNER =
+  process.env.EXPO_OWNER ?? process.env.EXPO_PUBLIC_EXPO_OWNER ?? 'gami-protocols-organization';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
+  // react-native-maps is autolinked; it is not an Expo config plugin.
   const nativePlugins: ExpoPlugins =
     process.env.EXPO_PLATFORM === 'native'
-      ? [['expo-dev-client', { launchMode: 'most-recent' }], 'react-native-maps']
+      ? [['expo-dev-client', { launchMode: 'most-recent' }]]
       : [];
 
   const expoConfig: ExpoConfig = {
