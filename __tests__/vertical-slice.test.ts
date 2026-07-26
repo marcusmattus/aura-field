@@ -9,6 +9,7 @@ import {
 } from '../lib/frequency/registry';
 import { createProvider, resolveProviderId } from '../lib/ai/index';
 import { computeFieldIndex } from '../lib/agents/field';
+import { formatCheckInContext } from '../lib/checkin-context';
 import type { ChakraState } from '../lib/types';
 
 describe('frequency → color', () => {
@@ -174,5 +175,21 @@ describe('offline outbox contract', () => {
     expect(payload.modality).toBe('voice');
     expect(payload.voiceUrl).toMatch(/^file:/);
     expect(payload.voiceDurationS).toBeGreaterThan(0);
+  });
+});
+
+describe('coach check-in personalization', () => {
+  it('formats morning check-in metrics for coach context', () => {
+    const ctx = formatCheckInContext([
+      { kind: 'morning', mood: 7, energy: 6, stress: 4, journal_note: 'soft start' },
+    ]);
+    expect(ctx).toContain('morning check-in');
+    expect(ctx).toContain('mood=7');
+    expect(ctx).toContain('soft start');
+  });
+
+  it('returns empty string when no check-ins', () => {
+    expect(formatCheckInContext([])).toBe('');
+    expect(formatCheckInContext(undefined)).toBe('');
   });
 });

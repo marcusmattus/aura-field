@@ -7,6 +7,7 @@ import {
   Waves,
   Wind,
 } from 'lucide-react-native';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -27,9 +28,11 @@ import {
   type ConversationMode,
 } from '@/lib/ai/types';
 import { SURFACE_ACCENT } from '@/lib/chakras';
+import { formatCheckInContext } from '@/lib/checkin-context';
 import {
   appendMessage,
   createConversation,
+  fetchTodayCheckIns,
   invokeFunction,
 } from '@/lib/db';
 import { hasBackend, supabase } from '@/lib/supabase';
@@ -59,6 +62,13 @@ export default function CoachScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const greetedRef = useRef(false);
   const messages = storeMessages;
+
+  const checkins = useQuery({
+    queryKey: ['checkins'],
+    enabled: hasBackend && subscribed,
+    queryFn: () => fetchTodayCheckIns(),
+    staleTime: 30_000,
+  });
 
   const lastMessageContent = messages[messages.length - 1]?.content;
 
@@ -96,9 +106,13 @@ export default function CoachScreen() {
     }
   };
 
-  const fieldSummary = states
-    .map((s) => `${s.key}:${Math.round(s.energy)}`)
-    .join(' ');
+  const checkInContext = formatCheckInContext(checkins.data);
+  const fieldSummary = [
+    states.map((s) => `${s.key}:${Math.round(s.energy)}`).join(' '),
+    checkInContext ? `today: ${checkInContext}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const sendMessage = async (
     raw: string,
