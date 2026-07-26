@@ -13,22 +13,26 @@ if [[ -z "${EXPO_TOKEN:-}" ]]; then
 fi
 
 export EXPO_PLATFORM=native
+export EAS_BUILD_NO_EXPO_GO_WARNING="${EAS_BUILD_NO_EXPO_GO_WARNING:-true}"
 PLATFORM="${1:-all}"
 
 build_one() {
   local p="$1"
-  echo "Building + auto-submitting production ($p)..."
-  # Auto-submit may fail without store credentials; still create the build.
-  if ! npx eas-cli build \
+  echo "Building production ($p)..."
+  # Build without waiting so we can kick off both platforms quickly.
+  npx eas-cli build \
     --profile production \
     --platform "$p" \
-    --auto-submit \
+    --non-interactive \
+    --no-wait
+
+  echo "Attempting store submit for latest $p build (may fail without store credentials)..."
+  if ! npx eas-cli submit \
+    --profile production \
+    --platform "$p" \
+    --latest \
     --non-interactive; then
-    echo "Auto-submit path failed for $p; retrying build only..."
-    npx eas-cli build \
-      --profile production \
-      --platform "$p" \
-      --non-interactive
+    echo "Submit skipped/failed for $p — build was still queued. Configure store credentials in EAS to submit."
   fi
 }
 
