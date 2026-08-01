@@ -255,19 +255,27 @@ config.server = {
   },
 };
 
-// Expo Go / non-dev-client: stub native-only modules that are not in the Go client
-// (or are unsafe landmines). Dev builds set EXPO_PLATFORM=native via eas.json.
-if (process.env.EXPO_PLATFORM !== 'native') {
-  const expoGoNativeStubs = new Set([
-    'react-native-maps',
-    'react-native-mmkv',
-    'react-native-nitro-modules',
-  ]);
+// Apply Uniwind first — it may wrap resolver hooks.
+const uniwindConfig = withUniwindConfig(config, {
+  cssEntryFile: './global.css',
+  dtsFile: './uniwind-types.d.ts',
+});
 
-  const upstreamResolveRequest = config.resolver.resolveRequest;
-  config.resolver.resolveRequest = (context, moduleName, platform) => {
-    if (expoGoNativeStubs.has(moduleName)) {
-      return { type: 'empty' };
+// Expo Go / non-dev-client: stub native-only modules that break Metro resolution
+// or are unavailable in Expo Go. Dev/EAS builds set EXPO_PLATFORM=native.
+if (process.env.EXPO_PLATFORM !== 'native') {
+  const path = require('path');
+  const expoGoNativeStubs = {
+    'react-native-maps': path.resolve(__dirname, 'lib/stubs/empty-native-module.js'),
+    'react-native-mmkv': path.resolve(__dirname, 'lib/stubs/empty-native-module.js'),
+    'react-native-nitro-modules': path.resolve(__dirname, 'lib/stubs/empty-native-module.js'),
+  };
+
+  const upstreamResolveRequest = uniwindConfig.resolver.resolveRequest;
+  uniwindConfig.resolver.resolveRequest = (context, moduleName, platform) => {
+    const stub = expoGoNativeStubs[moduleName];
+    if (stub) {
+      return { type: 'sourceFile', filePath: stub };
     }
     if (typeof upstreamResolveRequest === 'function') {
       return upstreamResolveRequest(context, moduleName, platform);
@@ -276,7 +284,4 @@ if (process.env.EXPO_PLATFORM !== 'native') {
   };
 }
 
-module.exports = withUniwindConfig(config, {
-  cssEntryFile: './global.css',
-  dtsFile: './uniwind-types.d.ts',
-});
+module.exports = uniwindConfig;
