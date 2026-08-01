@@ -175,6 +175,38 @@ export async function listJournalEntries(limit = 50): Promise<JournalRow[]> {
   return (data ?? []) as JournalRow[];
 }
 
+export async function updateJournalEntry(
+  id: string,
+  patch: {
+    body?: string;
+    themes?: string[];
+    tags?: EntryTag[];
+    transcript?: string;
+  },
+): Promise<JournalRow> {
+  const client = requireClient();
+  const userId = await requireUserId();
+  const { data, error } = await client
+    .from('journal_entries')
+    .update({
+      ...patch,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as JournalRow;
+}
+
+export async function deleteJournalEntry(id: string): Promise<void> {
+  const client = requireClient();
+  const userId = await requireUserId();
+  const { error } = await client.from('journal_entries').delete().eq('id', id).eq('user_id', userId);
+  if (error) throw error;
+}
+
 export async function uploadVoiceNote(localUri: string, ext = 'm4a'): Promise<string> {
   const client = requireClient();
   const userId = await requireUserId();
@@ -321,6 +353,31 @@ export async function recordFrequencySession(input: {
     .single();
   if (error) throw error;
   return data;
+}
+
+export interface FrequencySessionRow {
+  id: string;
+  user_id: string;
+  chakra_key: string;
+  base_frequency_hz: number;
+  beat_frequency_hz: number;
+  duration_s: number;
+  brainwave_band: string | null;
+  completed: boolean;
+  created_at: string;
+}
+
+export async function listFrequencySessions(limit = 50): Promise<FrequencySessionRow[]> {
+  const client = requireClient();
+  const userId = await requireUserId();
+  const { data, error } = await client
+    .from('frequency_sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as FrequencySessionRow[];
 }
 
 export async function trackAnalytics(eventName: string, properties: Record<string, unknown> = {}) {

@@ -107,6 +107,8 @@ npm run start:go:tunnel
 This runs `expo start --go --tunnel` (Expo’s built-in **ngrok** tunnel) and prints a QR / `exp://…` URL.  
 Open that in **Expo Go** (SDK 54) — Camera on iOS, or “Enter URL” on Android.
 
+Alternatively, if `cloudflared` is preferred locally, see prior Cloudflare-based tunnel notes on `main` — this branch uses ngrok/`exp.direct`.
+
 MMKV falls back to AsyncStorage in Expo Go. Full native features (custom native modules / production parity) need a **development build** instead.
 
 ### Development build (recommended for full native)
@@ -125,7 +127,34 @@ npx expo start --dev-client
 
 ## EAS build & store submission
 
-Requires an Expo account (`npx eas login` or `EXPO_TOKEN`) and Apple/Google store credentials managed by EAS.
+### Requirements checklist
+
+**Expo / project**
+- [ ] Expo account + `npx eas login` (or CI `EXPO_TOKEN`)
+- [ ] Project linked: `npx eas init` → sets `EAS_PROJECT_ID` / `extra.eas.projectId`
+- [ ] Static `app.json` present (required for Expo launch tooling) + dynamic overlays in `app.config.js`
+- [ ] Bundle IDs set: iOS `com.aurafield.app`, Android `com.aurafield.app` (override with `BILT_IOS_BUNDLE_ID` / `BILT_ANDROID_PACKAGE`)
+
+**iOS submit (App Store / TestFlight)**
+- [ ] Paid Apple Developer account
+- [ ] App exists in App Store Connect
+- [ ] `BILT_APP_STORE_APP_ID` = App Store Connect **Apple ID** (App Information → General → Apple ID) — required for non-interactive submit
+- [ ] Apple credentials on EAS: prefer `eas credentials --platform ios` → App Store Connect API Key  
+  (fallback: `EXPO_APPLE_ID` + `EXPO_APPLE_APP_SPECIFIC_PASSWORD`)
+- [ ] Optional: `BILT_APPLE_TEAM_ID`
+
+**Android submit (Play Console)**
+- [ ] Google Play Developer account
+- [ ] App created in Play Console (package `com.aurafield.app`)
+- [ ] Google Service Account key uploaded to EAS: `eas credentials --platform android`
+- [ ] Production profile builds an **`.aab`** (`android.buildType: app-bundle`) — already configured
+
+**CI secrets** (`.github/workflows/eas-build.yml`)
+- `EXPO_TOKEN`, `EAS_PROJECT_ID`, `EXPO_OWNER`
+- `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- For auto-submit: `BILT_APP_STORE_APP_ID` (+ optional `BILT_APPLE_TEAM_ID`, `EXPO_APPLE_ID`)
+
+Copy [`.env.example`](.env.example) for local values. `npm run eas:sync-submit` writes `ascAppId` / team / Apple ID from env into `eas.json` before production build/submit.
 
 ```bash
 # Link project (writes EAS projectId into app config / env)
@@ -134,6 +163,7 @@ npx eas init
 # Optional: set owner + project id for CI
 # export EXPO_OWNER=your-expo-username
 # export EAS_PROJECT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+# export BILT_APP_STORE_APP_ID=1234567890
 
 # Internal preview APK/IPA (shareable install links)
 npm run eas:build:preview
@@ -148,6 +178,29 @@ npm run eas:submit
 
 Profiles live in [`eas.json`](eas.json): `development`, `preview`, `production` (+ `development-simulator`).  
 Default bundle IDs are `com.aurafield.app` (override with `BILT_IOS_BUNDLE_ID` / `BILT_ANDROID_PACKAGE`).
+Production uses `distribution: "store"` and Android `.aab` for store submission.
+
+## Deploy checklist (vertical slice)
+
+```bash
+# 1) Link + migrate
+supabase link --project-ref YOUR_REF
+supabase db push
+
+# 2) Edge secrets + deploy
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... AI_PROVIDER=anthropic
+supabase functions deploy journal-analyze coach-respond ai-chat ai-embed transcribe-voice reflect
+
+# 3) Auth providers (dashboard)
+# Enable Email, Magic Link, Apple, Google; redirect: aura-field://auth/callback
+
+# 4) App env + EAS
+cp .env.example .env   # fill EXPO_PUBLIC_SUPABASE_*
+npm run eas:doctor
+npm run eas:build:preview
+```
+
+Verify locally: `npm run typecheck && npm test && npm run lint`.
 
 ## Privacy & safety
 

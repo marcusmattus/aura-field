@@ -29,6 +29,13 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = true
 
+# Enable Apple / Google in the Supabase dashboard (Auth → Providers).
+# Redirect URL must include: aura-field://auth/callback
+# [auth.external.apple]
+# enabled = true
+# [auth.external.google]
+# enabled = true
+
 [auth.sms]
 enable_signup = false
 

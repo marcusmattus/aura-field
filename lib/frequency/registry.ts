@@ -44,7 +44,7 @@ export const FREQUENCY_REGISTRY: FrequencyNode[] = [
     element: 'Source',
     bija: null,
     noteName: null,
-    baseFrequencyHz: 285,
+    baseFrequencyHz: 1074,
     beatFrequencyHz: 35,
     brainwaveBand: 'gamma',
     solfeggioIntent: 'Field regeneration, higher alignment',

@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { useLocalSearchParams } from 'expo-router';
-import { Mic, Send, Square } from 'lucide-react-native';
+import { Check, Mic, Pencil, Send, Square, Trash2, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -65,15 +65,18 @@ export default function JournalScreen() {
 
   const submit = () => {
     const body = text.trim();
-    if (!body) return;
-    void addEntry(body, voiceMode ? 'voice' : 'text', {
+    const hasVoice = voiceMode && Boolean(voiceNote?.uri);
+    if (!body && !hasVoice) return;
+    void addEntry(body || '[Voice note — transcribing…]', voiceMode || hasVoice ? 'voice' : 'text', {
       seededChakra: seeded,
-      voiceUrl: voiceMode ? (voiceNote?.uri ?? undefined) : undefined,
-      voiceDurationS: voiceMode ? voiceNote?.durationS : undefined,
+      voiceUrl: hasVoice ? voiceNote?.uri : undefined,
+      voiceDurationS: hasVoice ? voiceNote?.durationS : undefined,
     });
     setText('');
     setVoiceNote(null);
   };
+
+  const canSubmit = Boolean(text.trim()) || Boolean(voiceMode && voiceNote?.uri);
 
   const weekEntries = entries.filter((e) => e.createdAt > Date.now() - 7 * 86_400_000);
 
@@ -149,11 +152,11 @@ export default function JournalScreen() {
               </View>
               <Pressable
                 onPress={submit}
-                disabled={!text.trim()}
+                disabled={!canSubmit}
                 className="h-9 w-9 items-center justify-center rounded-full"
-                style={{ backgroundColor: text.trim() ? ACCENT : '#1e2535' }}
+                style={{ backgroundColor: canSubmit ? ACCENT : '#1e2535' }}
               >
-                <Send color={text.trim() ? '#0a0e18' : '#565c72'} size={15} />
+                <Send color={canSubmit ? '#0a0e18' : '#565c72'} size={15} />
               </Pressable>
             </View>
             {voiceMode ? (
@@ -183,7 +186,7 @@ export default function JournalScreen() {
                         VOICE NOTE SAVED · {voiceNote.durationS}s
                       </Mono>
                     ) : (
-                      <Mono>TAP TO RECORD · THEN TYPE WHAT YOU SAID</Mono>
+                      <Mono>TAP TO RECORD · WHISPER TRANSCRIBES ON SAVE</Mono>
                     )}
                     {recorder.denied ? (
                       <Text
@@ -226,7 +229,7 @@ export default function JournalScreen() {
             className="text-faint text-center font-mono"
             style={{ fontSize: 9, letterSpacing: 0.8 }}
           >
-            YOUR JOURNAL STAYS ON THIS DEVICE · NEVER USED TO TRAIN ANYTHING
+            YOUR JOURNAL SYNCS PRIVATELY · NEVER USED TO TRAIN ANYTHING
           </Text>
         </View>
       </ScrollView>
@@ -235,6 +238,22 @@ export default function JournalScreen() {
 }
 
 function EntryCard({ entry }: { entry: JournalEntry }) {
+  const updateEntry = useChakraStore((s) => s.updateEntry);
+  const deleteEntry = useChakraStore((s) => s.deleteEntry);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.body);
+
+  const saveEdit = () => {
+    const next = draft.trim();
+    if (!next || next === entry.body) {
+      setEditing(false);
+      setDraft(entry.body);
+      return;
+    }
+    void updateEntry(entry.id, next);
+    setEditing(false);
+  };
+
   return (
     <Panel className="p-4">
       <View className="flex-row items-center justify-between">
@@ -247,9 +266,55 @@ function EntryCard({ entry }: { entry: JournalEntry }) {
             </View>
           ) : null}
           <Mono>{format(new Date(entry.createdAt), 'h:mm a').toLowerCase()}</Mono>
+          {editing ? (
+            <>
+              <Pressable hitSlop={8} onPress={saveEdit}>
+                <Check color={ACCENT} size={14} />
+              </Pressable>
+              <Pressable
+                hitSlop={8}
+                onPress={() => {
+                  setEditing(false);
+                  setDraft(entry.body);
+                }}
+              >
+                <X color="#8a90a6" size={14} />
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Pressable
+                hitSlop={8}
+                onPress={() => {
+                  setDraft(entry.body);
+                  setEditing(true);
+                }}
+              >
+                <Pencil color="#8a90a6" size={13} />
+              </Pressable>
+              <Pressable hitSlop={8} onPress={() => void deleteEntry(entry.id)}>
+                <Trash2 color="#ff6b6b" size={13} />
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
-      <Voice className="mt-2">{`“${entry.body}”`}</Voice>
+      {editing ? (
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          multiline
+          className="text-ink mt-2"
+          style={{
+            fontFamily: 'Lora_400Regular_Italic',
+            fontSize: 15,
+            lineHeight: 22,
+            minHeight: 48,
+          }}
+        />
+      ) : (
+        <Voice className="mt-2">{`“${entry.body}”`}</Voice>
+      )}
       {entry.tags.length > 0 || entry.themes.length > 0 ? (
         <View className="mt-3 flex-row flex-wrap gap-2">
           {entry.tags.slice(0, 2).map((tag) => (

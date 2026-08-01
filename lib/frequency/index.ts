@@ -1,4 +1,11 @@
-export { colorFromFrequency, glowFromFrequency, hexFromFrequency, hueFromFrequency } from '@/lib/frequency/color';
+export {
+  FREQUENCY_COLOR_ANCHORS,
+  colorFromFrequency,
+  glowFromFrequency,
+  hexFromFrequency,
+  hueFromFrequency,
+  rgbFromFrequency,
+} from '@/lib/frequency/color';
 export type { DerivedPalette, Rgb } from '@/lib/frequency/color';
 export {
   FREQUENCY_BY_KEY,
@@ -9,3 +16,5 @@ export {
   toChakra,
 } from '@/lib/frequency/registry';
 export type { FrequencyNode } from '@/lib/frequency/registry';
+export { atmosphereForKey } from '@/lib/frequency/atmosphere';
+export type { AtmosphereMotion, AtmospherePreset } from '@/lib/frequency/atmosphere';

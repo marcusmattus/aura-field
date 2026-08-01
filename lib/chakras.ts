@@ -24,12 +24,13 @@ export function isChakraKey(v: unknown): v is ChakraKey {
   return typeof v === 'string' && (CHAKRA_ORDER as readonly string[]).includes(v);
 }
 
-/** Per-surface accent colors (Tailwind token names → hex for native props). */
+/** Per-surface accent colors (chrome only — session colours come from frequency). */
 export const SURFACE_ACCENT: Record<SurfaceKey, string> = {
   body: '#36d6e7',
   journal: '#e8b23d',
   coach: '#3ddc97',
-  sound: '#a56bff',
+  /** Neutral chrome for Sound tab — not a chakra colour (sessions carry their own hue). */
+  sound: '#7ec8e3',
   you: '#ff5ca8',
 };
 

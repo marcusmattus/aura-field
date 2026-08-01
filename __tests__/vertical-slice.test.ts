@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { colorFromFrequency, hueFromFrequency } from '../lib/frequency/color';
+import { atmosphereForKey } from '../lib/frequency/atmosphere';
+import { colorFromFrequency } from '../lib/frequency/color';
 import {
   FREQUENCY_REGISTRY,
   buildSoundLibrarySessions,
@@ -8,15 +9,38 @@ import {
 } from '../lib/frequency/registry';
 import { createProvider, resolveProviderId } from '../lib/ai/index';
 import { computeFieldIndex } from '../lib/agents/field';
+import { formatCheckInContext } from '../lib/checkin-context';
 import type { ChakraState } from '../lib/types';
 
 describe('frequency → color', () => {
-  it('maps higher Hz toward cooler hues', () => {
-    const low = hueFromFrequency(174);
-    const mid = hueFromFrequency(528);
-    const high = hueFromFrequency(963);
-    expect(low).toBeLessThan(mid);
-    expect(mid).toBeLessThan(high);
+  it('maps each carrier Hz to the exact product colour table', () => {
+    const table: [number, string][] = [
+      [174, '#C0433A'],
+      [396, '#FF4D5E'],
+      [417, '#FF8A3D'],
+      [528, '#FFD23D'],
+      [639, '#36F5A6'],
+      [741, '#3DB6FF'],
+      [852, '#6B6BFF'],
+      [963, '#B14DFF'],
+      [1074, '#EAF0FF'],
+    ];
+    for (const [hz, hex] of table) {
+      expect(colorFromFrequency(hz).color.toUpperCase()).toBe(hex);
+    }
+  });
+
+  it('treats 1074+ Hz as soul pale light', () => {
+    expect(colorFromFrequency(1200).color.toUpperCase()).toBe('#EAF0FF');
+  });
+
+  it('keeps heart green and root red (not purple)', () => {
+    const heart = colorFromFrequency(639, 10);
+    const root = colorFromFrequency(396, 7.83);
+    expect(heart.rgb.g).toBeGreaterThan(heart.rgb.r);
+    expect(heart.rgb.g).toBeGreaterThan(heart.rgb.b);
+    expect(root.rgb.r).toBeGreaterThan(root.rgb.g);
+    expect(root.rgb.r).toBeGreaterThan(root.rgb.b);
   });
 
   it('derives a full palette from carrier + beat', () => {
@@ -34,13 +58,29 @@ describe('frequency → color', () => {
       expect(c.color).toMatch(/^#[0-9a-f]{6}$/i);
       expect(c.solfeggioHz).toBeGreaterThan(0);
     }
+    expect(FREQUENCY_REGISTRY.find((n) => n.key === 'soul')?.baseFrequencyHz).toBe(1074);
   });
 
-  it('generates sound library sessions without hardcoded colour authority', () => {
+  it('generates sound library sessions with distinct per-node colours', () => {
     const sessions = buildSoundLibrarySessions(300);
     expect(sessions).toHaveLength(9);
-    expect(sessions[0].color).toBeTruthy();
-    expect(sessions.find((s) => s.chakra === 'heart')?.hz).toBe(639);
+    const colors = new Set(sessions.map((s) => s.color));
+    expect(colors.size).toBe(9);
+    expect(sessions.find((s) => s.chakra === 'heart')?.color.toUpperCase()).toBe('#36F5A6');
+    expect(sessions.find((s) => s.chakra === 'soul')?.hz).toBe(1074);
+  });
+
+  it('transforms session atmosphere per frequency signature', () => {
+    expect(atmosphereForKey('earth').motion).toBe('breath-slow');
+    expect(atmosphereForKey('earth').particleCount).toBeGreaterThan(20);
+    expect(atmosphereForKey('solar').uiMode).toBe('warm');
+    expect(atmosphereForKey('solar').bloom).toBeGreaterThan(0.9);
+    expect(atmosphereForKey('heart').motion).toBe('breath-gentle');
+    expect(atmosphereForKey('throat').motion).toBe('ripple-fast');
+    expect(atmosphereForKey('throat').waveStrength).toBe(1);
+    expect(atmosphereForKey('third').control).toBe('#9B6BFF');
+    expect(atmosphereForKey('crown').uiMode).toBe('minimal');
+    expect(atmosphereForKey('crown').motionScale).toBeLessThan(0.5);
   });
 });
 
@@ -112,5 +152,44 @@ describe('edge function contracts (shape)', () => {
     };
     expect(res.ok).toBe(true);
     expect(res.transcript.length).toBeGreaterThan(0);
+  });
+
+  it('ai-embed match payload shape', () => {
+    const res = {
+      ok: true,
+      matches: [{ summary: 'felt open at heart', similarity: 0.82 }],
+    };
+    expect(res.matches[0].similarity).toBeGreaterThan(0.5);
+  });
+});
+
+describe('offline outbox contract', () => {
+  it('supports journal payload with voice fields for flush', () => {
+    const payload = {
+      body: 'offline note',
+      modality: 'voice' as const,
+      voiceUrl: 'file://note.m4a',
+      voiceDurationS: 12,
+      seededChakra: 'heart' as const,
+    };
+    expect(payload.modality).toBe('voice');
+    expect(payload.voiceUrl).toMatch(/^file:/);
+    expect(payload.voiceDurationS).toBeGreaterThan(0);
+  });
+});
+
+describe('coach check-in personalization', () => {
+  it('formats morning check-in metrics for coach context', () => {
+    const ctx = formatCheckInContext([
+      { kind: 'morning', mood: 7, energy: 6, stress: 4, journal_note: 'soft start' },
+    ]);
+    expect(ctx).toContain('morning check-in');
+    expect(ctx).toContain('mood=7');
+    expect(ctx).toContain('soft start');
+  });
+
+  it('returns empty string when no check-ins', () => {
+    expect(formatCheckInContext([])).toBe('');
+    expect(formatCheckInContext(undefined)).toBe('');
   });
 });

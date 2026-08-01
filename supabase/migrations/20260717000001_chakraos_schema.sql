@@ -340,7 +340,7 @@ insert into public.sound_library (
    'Intuition, returning to spiritual order', array['third', 'insight', 'theta']),
   ('crown', 'Crown', 'Sahasrara', 'Consciousness', 'AUM', 'B', 963, 40.0, 'gamma',
    'Unity, divine connection', array['crown', 'awareness', 'gamma']),
-  ('soul', 'Soul', 'Sutara', 'Source', null, null, 285, 35.0, 'gamma',
+  ('soul', 'Soul', 'Sutara', 'Source', null, null, 1074, 35.0, 'gamma',
    'Field regeneration, higher alignment', array['soul', 'source', 'gamma'])
 on conflict (chakra_key) do update set
   name = excluded.name,
