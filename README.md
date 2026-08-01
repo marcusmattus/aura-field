@@ -104,14 +104,10 @@ Open the JS bundle in the Expo Go app (SDK 54):
 npm run start:go:tunnel
 ```
 
-This starts Metro and a Cloudflare tunnel, then prints an `exp://…` URL.  
-Open that URL in **Expo Go** (SDK 54) — Camera on iOS, or “Enter URL” on Android.
+This runs `expo start --go --tunnel` (Expo’s built-in **ngrok** tunnel) and prints a QR / `exp://…` URL.  
+Open that in **Expo Go** (SDK 54) — Camera on iOS, or “Enter URL” on Android.
 
-If you are logged into Expo (`npx eas login` / `EXPO_TOKEN`), you can also use Expo’s built-in tunnel:
-
-```bash
-npx expo start --go --tunnel
-```
+Alternatively, if `cloudflared` is preferred locally, see prior Cloudflare-based tunnel notes on `main` — this branch uses ngrok/`exp.direct`.
 
 MMKV falls back to AsyncStorage in Expo Go. Full native features (custom native modules / production parity) need a **development build** instead.
 
@@ -181,6 +177,7 @@ npm run eas:submit
 ```
 
 Profiles live in [`eas.json`](eas.json): `development`, `preview`, `production` (+ `development-simulator`).  
+Default bundle IDs are `com.aurafield.app` (override with `BILT_IOS_BUNDLE_ID` / `BILT_ANDROID_PACKAGE`).
 Production uses `distribution: "store"` and Android `.aab` for store submission.
 
 ## Deploy checklist (vertical slice)
