@@ -1,6 +1,26 @@
 /** @type {import('expo/metro-config').MetroConfig} */
+const fs = require('fs');
 const { getDefaultConfig } = require('expo/metro-config');
 const { withUniwindConfig } = require('uniwind/metro');
+
+// Skia on web renders through CanvasKit (WASM). Serve the installed copy from the
+// dev server so lib/skia.web.ts can boot it without reaching out to a CDN.
+const canvasKitAssets = (() => {
+  const entries = [
+    ['/canvaskit.js', 'canvaskit-wasm/bin/full/canvaskit.js', 'application/javascript'],
+    ['/canvaskit.wasm', 'canvaskit-wasm/bin/full/canvaskit.wasm', 'application/wasm'],
+  ];
+  /** @type {Record<string, { filePath: string, contentType: string }>} */
+  const resolved = {};
+  for (const [route, request, contentType] of entries) {
+    try {
+      resolved[route] = { filePath: require.resolve(request), contentType };
+    } catch {
+      // canvaskit-wasm not installed — lib/skia.web.ts falls back to the CDN.
+    }
+  }
+  return resolved;
+})();
 
 const cleanHostHeader = (headerValue) => {
   if (!headerValue) return undefined;
@@ -72,6 +92,26 @@ config.server = {
     // This middleware runs BEFORE Metro's default middleware
     // We need to modify the request so Metro can construct valid URLs
     return (req, res, next) => {
+      // Serve CanvasKit (Skia web backend) straight from node_modules.
+      const pathname = (req.url || '').split('?')[0];
+      const canvasKitAsset = canvasKitAssets[pathname];
+      if (canvasKitAsset) {
+        try {
+          const { size } = fs.statSync(canvasKitAsset.filePath);
+          res.setHeader('Content-Type', canvasKitAsset.contentType);
+          res.setHeader('Content-Length', size);
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          if (req.method === 'HEAD') {
+            res.end();
+          } else {
+            fs.createReadStream(canvasKitAsset.filePath).pipe(res);
+          }
+          return undefined;
+        } catch {
+          // Fall through to Metro, and let the client retry from the CDN.
+        }
+      }
+
       // Metro constructs URLs using req.headers.host at Server._processRequest
       // When behind a proxy, the Host header is the proxy's host, not the client's
       // We need to replace it with the original client host so Metro can construct valid URLs

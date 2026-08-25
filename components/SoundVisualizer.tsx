@@ -5,6 +5,7 @@ import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
 import { useBreath } from '@/hooks/useBreath';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useSkiaReady } from '@/lib/skia';
 
 interface SoundVisualizerProps {
   size: number;
@@ -42,6 +43,12 @@ function Bars({ size, color, pulse }: { size: number; color: string; pulse: Shar
 
 /** Radial Skia visualizer reacting to playback (synthesized envelope). */
 export function SoundVisualizer({ size, color, playing }: SoundVisualizerProps) {
+  const skiaReady = useSkiaReady();
+  if (!skiaReady) return <View style={{ width: size, height: size }} />;
+  return <SoundVisualizerCanvas size={size} color={color} playing={playing} />;
+}
+
+function SoundVisualizerCanvas({ size, color, playing }: SoundVisualizerProps) {
   const reduced = useReducedMotion();
   const pulse = useBreath(reduced || !playing);
   const cx = size / 2;

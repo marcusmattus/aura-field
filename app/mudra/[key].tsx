@@ -40,6 +40,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CHAKRA_BY_KEY } from '@/lib/chakras';
 import { MUDRAS, MUDRA_BY_KEY, mudraSessionsFor } from '@/lib/mudras';
 import { palmPointsFor } from '@/lib/palm';
+import { useSkiaReady } from '@/lib/skia';
 import { useChakraStore } from '@/lib/store';
 import type { ChakraKey } from '@/lib/types';
 
@@ -82,7 +83,18 @@ function GatherPoint({
 }
 
 /** The reference hand shape plus the palm points the mudra gathers toward. */
-function MudraGuide({
+function MudraGuide(props: {
+  width: number;
+  height: number;
+  accent: string;
+  gathers: ChakraKey[];
+}) {
+  const skiaReady = useSkiaReady();
+  if (!skiaReady) return null;
+  return <MudraGuideCanvas {...props} />;
+}
+
+function MudraGuideCanvas({
   width,
   height,
   accent,
@@ -123,7 +135,13 @@ function MudraGuide({
   );
 }
 
-function HoldRing({
+function HoldRing(props: { progress: DerivedValue<number>; color: string; size: number }) {
+  const skiaReady = useSkiaReady();
+  if (!skiaReady) return <View style={{ width: props.size, height: props.size }} />;
+  return <HoldRingCanvas {...props} />;
+}
+
+function HoldRingCanvas({
   progress,
   color,
   size,

@@ -31,6 +31,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { buildPalmOutlinePath } from '@/components/palm/palmPath';
 import { CHAKRA_BY_KEY } from '@/lib/chakras';
 import { palmPointsFor, segmentStrengths, type PalmPoint } from '@/lib/palm';
+import { useSkiaReady } from '@/lib/skia';
 import type { ChakraKey, ChakraState, PalmHand } from '@/lib/types';
 
 export type PalmPhase = 'aligning' | 'scanning' | 'locked';
@@ -156,7 +157,13 @@ function ChannelSegment({
  * points and the channel between them, and lets the user drag, rotate and pinch
  * the whole rig so it stays anchored to their hand as they move it.
  */
-export function PalmRig({
+export function PalmRig(props: PalmRigProps) {
+  const skiaReady = useSkiaReady();
+  if (!skiaReady) return <View style={{ width: props.width, height: props.height }} />;
+  return <PalmRigCanvas {...props} />;
+}
+
+function PalmRigCanvas({
   states,
   hand,
   width,

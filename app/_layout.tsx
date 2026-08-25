@@ -33,6 +33,7 @@ import {
 
 import { initPostHog } from '@/lib/posthog';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
+import { loadSkiaWeb } from '@/lib/skia';
 import { useChakraStore } from '@/lib/store';
 import { useCloudHydration } from '@/lib/sync/hydrate';
 import { restoreSession } from '@/lib/supabase';
@@ -147,6 +148,11 @@ export default function RootLayout() {
     void restoreSession().then((ok) => {
       if (ok) void useChakraStore.getState().onAuthenticated();
     });
+  }, []);
+
+  // Web: start fetching CanvasKit (Skia's WASM backend) before any canvas mounts.
+  useEffect(() => {
+    void loadSkiaWeb();
   }, []);
 
   // Report uncaught JS errors and unhandled promise rejections to parent (Bilt preview iframe)

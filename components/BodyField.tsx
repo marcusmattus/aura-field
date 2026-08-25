@@ -5,6 +5,7 @@ import { useDerivedValue, type DerivedValue } from 'react-native-reanimated';
 import { Text } from 'heroui-native';
 
 import { CHAKRA_BY_KEY, CHAKRA_ORDER } from '@/lib/chakras';
+import { useSkiaReady } from '@/lib/skia';
 import type { ChakraKey, ChakraState } from '@/lib/types';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useBreath } from '@/hooks/useBreath';
@@ -59,11 +60,62 @@ function NodeBloom({
   );
 }
 
+function FieldCanvas({
+  nodes,
+  cx,
+  width,
+  height,
+  breath,
+}: {
+  nodes: NodeView[];
+  cx: number;
+  width: number;
+  height: number;
+  breath: DerivedValue<number>;
+}) {
+  return (
+    <Canvas style={{ width, height }}>
+      {/* central channel dots */}
+      <Group opacity={0.4}>
+        {nodes.slice(0, -1).map((n, i) => {
+          const next = nodes[i + 1];
+          return (
+            <Circle
+              key={`line-${n.key}`}
+              cx={cx}
+              cy={(n.cy + next.cy) / 2}
+              r={1.4}
+              color="#2a3450"
+            />
+          );
+        })}
+      </Group>
+
+      {/* glow blooms */}
+      <Group layer>
+        {nodes.map((n) => (
+          <NodeBloom key={`bloom-${n.key}`} node={n} cx={cx} breath={breath} />
+        ))}
+        <Blur blur={8} />
+      </Group>
+
+      {/* node cores */}
+      {nodes.map((n) => (
+        <Group key={`core-${n.key}`}>
+          <Circle cx={cx} cy={n.cy} r={n.baseR} color={n.color} opacity={0.95} />
+          <Circle cx={cx} cy={n.cy} r={n.baseR * 0.45} color="#ffffff" opacity={0.7} />
+        </Group>
+      ))}
+    </Canvas>
+  );
+}
+
 export function BodyField({ states, width, onSelectNode }: BodyFieldProps) {
   const height = Math.min(width * 1.5, 520);
   const cx = width / 2;
   const reduced = useReducedMotion();
   const breath = useBreath(reduced);
+  const skiaReady = useSkiaReady();
 
   const nodes = useMemo<NodeView[]>(
     () =>
@@ -79,40 +131,9 @@ export function BodyField({ states, width, onSelectNode }: BodyFieldProps) {
 
   return (
     <View style={{ width, height }}>
-      <Canvas style={{ width, height }}>
-        {/* central channel dots */}
-        <Group opacity={0.4}>
-          {nodes.slice(0, -1).map((n, i) => {
-            const next = nodes[i + 1];
-            return (
-              <Circle
-                key={`line-${n.key}`}
-                cx={cx}
-                cy={(n.cy + next.cy) / 2}
-                r={1.4}
-                color="#2a3450"
-              />
-            );
-          })}
-        </Group>
-
-        {/* glow blooms */}
-        <Group layer>
-          {nodes.map((n) => (
-            <NodeBloom key={`bloom-${n.key}`} node={n} cx={cx} breath={breath} />
-          ))}
-          <Blur blur={8} />
-        </Group>
-
-        {/* node cores */}
-        {nodes.map((n) => (
-          <Group key={`core-${n.key}`}>
-            <Circle cx={cx} cy={n.cy} r={n.baseR} color={n.color} opacity={0.95} />
-            <Circle cx={cx} cy={n.cy} r={n.baseR * 0.45} color="#ffffff" opacity={0.7} />
-          </Group>
-        ))}
-      </Canvas>
-
+      {skiaReady ? (
+        <FieldCanvas nodes={nodes} cx={cx} width={width} height={height} breath={breath} />
+      ) : null}
       {/* tap targets + labels */}
       {nodes.map((n) => {
         const chakra = CHAKRA_BY_KEY[n.key];

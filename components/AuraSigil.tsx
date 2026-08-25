@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { View } from 'react-native';
 
 import { CHAKRA_BY_KEY, CHAKRA_ORDER } from '@/lib/chakras';
+import { useSkiaReady } from '@/lib/skia';
 import type { ChakraState } from '@/lib/types';
 
 interface AuraSigilProps {
@@ -15,6 +16,12 @@ interface AuraSigilProps {
  * from center scales with energy; same node colors as the body field.
  */
 export function AuraSigil({ states, size }: AuraSigilProps) {
+  const skiaReady = useSkiaReady();
+  if (!skiaReady) return <View style={{ width: size, height: size }} />;
+  return <AuraSigilCanvas states={states} size={size} />;
+}
+
+function AuraSigilCanvas({ states, size }: AuraSigilProps) {
   const cx = size / 2;
   const cy = size / 2;
   const maxR = size * 0.42;
