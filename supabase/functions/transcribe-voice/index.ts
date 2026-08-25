@@ -21,7 +21,9 @@ Deno.serve(async (req) => {
     if (!url || !serviceKey) return json({ ok: false, error: 'Supabase admin unavailable' }, 503);
 
     const admin = createClient(url, serviceKey);
-    const { data: file, error: dlErr } = await admin.storage.from('voice-notes').download(storagePath);
+    const { data: file, error: dlErr } = await admin.storage
+      .from('voice-notes')
+      .download(storagePath);
     if (dlErr || !file) return json({ ok: false, error: dlErr?.message ?? 'Download failed' }, 400);
 
     const form = new FormData();

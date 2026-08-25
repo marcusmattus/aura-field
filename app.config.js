@@ -20,7 +20,9 @@ module.exports = ({ config }) => {
       : [];
 
   const existingEas =
-    typeof config.extra?.eas === 'object' && config.extra.eas !== null ? { ...config.extra.eas } : {};
+    typeof config.extra?.eas === 'object' && config.extra.eas !== null
+      ? { ...config.extra.eas }
+      : {};
 
   const projectId = EAS_PROJECT_ID ?? existingEas.projectId;
 

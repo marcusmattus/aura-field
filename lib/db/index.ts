@@ -203,7 +203,11 @@ export async function updateJournalEntry(
 export async function deleteJournalEntry(id: string): Promise<void> {
   const client = requireClient();
   const userId = await requireUserId();
-  const { error } = await client.from('journal_entries').delete().eq('id', id).eq('user_id', userId);
+  const { error } = await client
+    .from('journal_entries')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
   if (error) throw error;
 }
 
@@ -308,7 +312,9 @@ export async function insertChakraScores(
   return data as ChakraScoreRow[];
 }
 
-export async function fetchLatestChakraScores(): Promise<Record<ChakraKey, { score: number; trend7d: number }>> {
+export async function fetchLatestChakraScores(): Promise<
+  Record<ChakraKey, { score: number; trend7d: number }>
+> {
   const client = requireClient();
   const userId = await requireUserId();
   const { data, error } = await client

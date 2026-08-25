@@ -2,13 +2,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { Text } from 'heroui-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -105,7 +99,10 @@ export default function CheckInScreen() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!hasBackend) {
-        await enqueueOutbox({ type: 'checkin', payload: payload as unknown as Record<string, unknown> });
+        await enqueueOutbox({
+          type: 'checkin',
+          payload: payload as unknown as Record<string, unknown>,
+        });
         return { offline: true };
       }
       try {
@@ -136,7 +133,10 @@ export default function CheckInScreen() {
         void trackAnalytics('checkin_completed', { kind });
         return { offline: false, row };
       } catch {
-        await enqueueOutbox({ type: 'checkin', payload: payload as unknown as Record<string, unknown> });
+        await enqueueOutbox({
+          type: 'checkin',
+          payload: payload as unknown as Record<string, unknown>,
+        });
         return { offline: true };
       }
     },
@@ -153,7 +153,11 @@ export default function CheckInScreen() {
       {/* eslint-disable-next-line react/style-prop-object -- expo-status-bar */}
       <StatusBar style="light" />
       <View className="pt-safe-offset-3 flex-row items-center justify-between px-5">
-        <Pressable hitSlop={12} onPress={() => router.back()} className="flex-row items-center gap-1">
+        <Pressable
+          hitSlop={12}
+          onPress={() => router.back()}
+          className="flex-row items-center gap-1"
+        >
           <ChevronLeft color={MUTE} size={16} />
           <Mono>BACK</Mono>
         </Pressable>
@@ -298,7 +302,12 @@ function TextArea({
         placeholderTextColor="#3a4255"
         multiline
         className="bg-panel border-line text-ink min-h-[72px] rounded-2xl border px-4 py-3"
-        style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: '#e9ecf5', textAlignVertical: 'top' }}
+        style={{
+          fontFamily: 'Inter_400Regular',
+          fontSize: 15,
+          color: '#e9ecf5',
+          textAlignVertical: 'top',
+        }}
       />
     </View>
   );

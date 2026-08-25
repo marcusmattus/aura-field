@@ -119,6 +119,7 @@ function RootNavigator({ navigatorReady }: { navigatorReady: boolean }) {
           options={{ presentation: 'modal', headerShown: false }}
         />
         <Stack.Screen name="session" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="mudra/[key]" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
     </HeroUINativeProvider>
   );

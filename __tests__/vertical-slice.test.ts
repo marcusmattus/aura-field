@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { atmosphereForKey } from '../lib/frequency/atmosphere';
 import { colorFromFrequency } from '../lib/frequency/color';
-import {
-  FREQUENCY_REGISTRY,
-  buildSoundLibrarySessions,
-  toChakra,
-} from '../lib/frequency/registry';
+import { FREQUENCY_REGISTRY, buildSoundLibrarySessions, toChakra } from '../lib/frequency/registry';
 import { createProvider, resolveProviderId } from '../lib/ai/index';
 import { computeFieldIndex } from '../lib/agents/field';
 import { formatCheckInContext } from '../lib/checkin-context';

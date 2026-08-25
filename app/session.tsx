@@ -179,9 +179,17 @@ export default function SessionScreen() {
             }}
           >
             {active ? (
-              <Pause color={atmosphere.backgroundBottom} size={26} fill={atmosphere.backgroundBottom} />
+              <Pause
+                color={atmosphere.backgroundBottom}
+                size={26}
+                fill={atmosphere.backgroundBottom}
+              />
             ) : (
-              <Play color={atmosphere.backgroundBottom} size={26} fill={atmosphere.backgroundBottom} />
+              <Play
+                color={atmosphere.backgroundBottom}
+                size={26}
+                fill={atmosphere.backgroundBottom}
+              />
             )}
           </Pressable>
           {!minimal ? (

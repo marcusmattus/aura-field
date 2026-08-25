@@ -108,6 +108,24 @@ export interface CompletedSession {
   completedAt: number;
 }
 
+/** Which hand a palm scan was framed with. */
+export type PalmHand = 'left' | 'right';
+
+/**
+ * A saved reading of the chakraOS palm visualisation. Records the field state
+ * that was projected onto the hand — never anything measured from the camera.
+ */
+export interface PalmScan {
+  id: string;
+  capturedAt: number;
+  hand: PalmHand;
+  /** field index at capture time (the "palm field" score) */
+  fieldIndex: number;
+  /** how evenly the channel ran fingertip → wrist, 0-100 */
+  continuity: number;
+  energies: Record<ChakraKey, number>;
+}
+
 export interface Breakthrough {
   id: string;
   label: string;

@@ -52,7 +52,9 @@ export function formatCheckInContext(rows: CheckInRowLike[] | null | undefined):
       row.journal_note ? `note: ${row.journal_note}` : null,
     ].filter(Boolean);
 
-    const chunk = [`${kind} check-in`, metrics.join(' '), notes.join('; ')].filter(Boolean).join(' · ');
+    const chunk = [`${kind} check-in`, metrics.join(' '), notes.join('; ')]
+      .filter(Boolean)
+      .join(' · ');
     if (chunk) parts.push(chunk);
   }
 

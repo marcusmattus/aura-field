@@ -1,12 +1,5 @@
 import { useRouter } from 'expo-router';
-import {
-  FastForward,
-  PenLine,
-  RefreshCw,
-  Send,
-  Waves,
-  Wind,
-} from 'lucide-react-native';
+import { FastForward, PenLine, RefreshCw, Send, Waves, Wind } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -29,12 +22,7 @@ import {
 } from '@/lib/ai/types';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { formatCheckInContext } from '@/lib/checkin-context';
-import {
-  appendMessage,
-  createConversation,
-  fetchTodayCheckIns,
-  invokeFunction,
-} from '@/lib/db';
+import { appendMessage, createConversation, fetchTodayCheckIns, invokeFunction } from '@/lib/db';
 import { hasBackend, supabase } from '@/lib/supabase';
 import { useChakraStore } from '@/lib/store';
 import type { CoachMessage, Protocol } from '@/lib/types';
@@ -83,8 +71,7 @@ export default function CoachScreen() {
       {
         id: uid(),
         role: 'coach',
-        content:
-          'Welcome back. Take a breath — what feels most present in your field right now?',
+        content: 'Welcome back. Take a breath — what feels most present in your field right now?',
         createdAt: Date.now(),
       },
     ]);
@@ -189,9 +176,9 @@ export default function CoachScreen() {
     const applyDelta = (delta: string) => {
       streamed += delta;
       setCoachMessages(
-        useChakraStore.getState().coachMessages.map((m) =>
-          m.id === assistantId ? { ...m, content: streamed } : m,
-        ),
+        useChakraStore
+          .getState()
+          .coachMessages.map((m) => (m.id === assistantId ? { ...m, content: streamed } : m)),
       );
     };
 
@@ -238,11 +225,11 @@ export default function CoachScreen() {
       });
       streamed = reply.content;
       setCoachMessages(
-        useChakraStore.getState().coachMessages.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: reply.content, protocols: reply.protocols }
-            : m,
-        ),
+        useChakraStore
+          .getState()
+          .coachMessages.map((m) =>
+            m.id === assistantId ? { ...m, content: reply.content, protocols: reply.protocols } : m,
+          ),
       );
     }
 
@@ -344,7 +331,7 @@ export default function CoachScreen() {
         ))}
       </ScrollView>
 
-      <View className="border-line border-t px-4 pb-safe pt-2">
+      <View className="border-line pb-safe border-t px-4 pt-2">
         <View className="mb-2 flex-row gap-3">
           <Pressable
             hitSlop={8}

@@ -4,14 +4,14 @@ Provider-agnostic agents. Mobile client calls via `lib/db/invokeFunction` or `su
 
 ## Functions
 
-| Name | Purpose |
-|------|---------|
-| `ai-chat` | Streaming SSE coach (`stream: true`) or JSON `{ ok, content }` |
-| `ai-embed` | OpenAI embeddings; optional `match` via `match_memory_items`; optional persist |
-| `transcribe-voice` | Whisper + theme summary; updates journal/voice_notes |
-| `reflect` | Reflection JSON → `reflection_summaries` + `memory_items` + `chakra_scores` |
-| `journal-analyze` | Legacy journal tagger (Anthropic JSON) |
-| `coach-respond` | Legacy coach JSON (Anthropic) |
+| Name               | Purpose                                                                        |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `ai-chat`          | Streaming SSE coach (`stream: true`) or JSON `{ ok, content }`                 |
+| `ai-embed`         | OpenAI embeddings; optional `match` via `match_memory_items`; optional persist |
+| `transcribe-voice` | Whisper + theme summary; updates journal/voice_notes                           |
+| `reflect`          | Reflection JSON → `reflection_summaries` + `memory_items` + `chakra_scores`    |
+| `journal-analyze`  | Legacy journal tagger (Anthropic JSON)                                         |
+| `coach-respond`    | Legacy coach JSON (Anthropic)                                                  |
 
 ## Design contract
 

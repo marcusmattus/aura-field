@@ -97,7 +97,7 @@ export function SessionAtmosphereView({ atmosphere, active }: Props) {
         easing: Easing.inOut(Easing.sin),
       }),
       -1,
-      true
+      true,
     );
     progress.value = withRepeat(
       withTiming(1, {
@@ -105,7 +105,7 @@ export function SessionAtmosphereView({ atmosphere, active }: Props) {
         easing: Easing.linear,
       }),
       -1,
-      false
+      false,
     );
     float.value = withRepeat(
       withTiming(1, {
@@ -113,7 +113,7 @@ export function SessionAtmosphereView({ atmosphere, active }: Props) {
         easing: Easing.inOut(Easing.quad),
       }),
       -1,
-      true
+      true,
     );
     ripple.value = withRepeat(
       withTiming(1, {
@@ -121,9 +121,18 @@ export function SessionAtmosphereView({ atmosphere, active }: Props) {
         easing: Easing.out(Easing.quad),
       }),
       -1,
-      false
+      false,
     );
-  }, [active, atmosphere.motion, atmosphere.motionScale, breath, float, progress, reduceMotion, ripple]);
+  }, [
+    active,
+    atmosphere.motion,
+    atmosphere.motionScale,
+    breath,
+    float,
+    progress,
+    reduceMotion,
+    ripple,
+  ]);
 
   const seeds = useMemo<ParticleSeed[]>(() => {
     const count = Math.max(0, atmosphere.particleCount);
@@ -136,12 +145,14 @@ export function SessionAtmosphereView({ atmosphere, active }: Props) {
     }));
   }, [atmosphere.particleCount]);
 
-  const bloomR = useDerivedValue(() => Math.min(width, height) * 0.42 * breath.value * atmosphere.bloom);
+  const bloomR = useDerivedValue(
+    () => Math.min(width, height) * 0.42 * breath.value * atmosphere.bloom,
+  );
   const glowR = useDerivedValue(() => Math.min(width, height) * 0.28 * breath.value);
   const auraR = useDerivedValue(() => Math.min(width, height) * 0.55 * breath.value);
   const waveR1 = useDerivedValue(() => Math.min(width, height) * (0.18 + ripple.value * 0.45));
   const waveR2 = useDerivedValue(
-    () => Math.min(width, height) * (0.12 + ((ripple.value + 0.35) % 1) * 0.5)
+    () => Math.min(width, height) * (0.12 + ((ripple.value + 0.35) % 1) * 0.5),
   );
   const waveOpacity = useDerivedValue(() => (1 - ripple.value) * 0.45 * atmosphere.waveStrength);
 

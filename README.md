@@ -53,12 +53,12 @@ profiles, user_preferences, daily_checkins, journal_entries, voice_notes, conver
 supabase functions deploy journal-analyze coach-respond ai-chat ai-embed transcribe-voice reflect
 ```
 
-| Function | Role |
-|----------|------|
-| `ai-chat` | Streaming / non-streaming coach (provider-agnostic) |
-| `ai-embed` | Embeddings + optional pgvector match / memory persist |
-| `transcribe-voice` | Whisper transcription + theme extraction |
-| `reflect` | Reflection summary → memory + chakra score deltas |
+| Function                            | Role                                                           |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `ai-chat`                           | Streaming / non-streaming coach (provider-agnostic)            |
+| `ai-embed`                          | Embeddings + optional pgvector match / memory persist          |
+| `transcribe-voice`                  | Whisper transcription + theme extraction                       |
+| `reflect`                           | Reflection summary → memory + chakra score deltas              |
 | `journal-analyze` / `coach-respond` | Legacy deterministic-friendly agents (still used as fallbacks) |
 
 ## Auth
@@ -130,26 +130,30 @@ npx expo start --dev-client
 ### Requirements checklist
 
 **Expo / project**
+
 - [ ] Expo account + `npx eas login` (or CI `EXPO_TOKEN`)
 - [ ] Project linked: `npx eas init` → sets `EAS_PROJECT_ID` / `extra.eas.projectId`
 - [ ] Static `app.json` present (required for Expo launch tooling) + dynamic overlays in `app.config.js`
 - [ ] Bundle IDs set: iOS `com.aurafield.app`, Android `com.aurafield.app` (override with `BILT_IOS_BUNDLE_ID` / `BILT_ANDROID_PACKAGE`)
 
 **iOS submit (App Store / TestFlight)**
+
 - [ ] Paid Apple Developer account
 - [ ] App exists in App Store Connect
 - [ ] `BILT_APP_STORE_APP_ID` = App Store Connect **Apple ID** (App Information → General → Apple ID) — required for non-interactive submit
 - [ ] Apple credentials on EAS: prefer `eas credentials --platform ios` → App Store Connect API Key  
-  (fallback: `EXPO_APPLE_ID` + `EXPO_APPLE_APP_SPECIFIC_PASSWORD`)
+       (fallback: `EXPO_APPLE_ID` + `EXPO_APPLE_APP_SPECIFIC_PASSWORD`)
 - [ ] Optional: `BILT_APPLE_TEAM_ID`
 
 **Android submit (Play Console)**
+
 - [ ] Google Play Developer account
 - [ ] App created in Play Console (package `com.aurafield.app`)
 - [ ] Google Service Account key uploaded to EAS: `eas credentials --platform android`
 - [ ] Production profile builds an **`.aab`** (`android.buildType: app-bundle`) — already configured
 
 **CI secrets** (`.github/workflows/eas-build.yml`)
+
 - `EXPO_TOKEN`, `EAS_PROJECT_ID`, `EXPO_OWNER`
 - `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - For auto-submit: `BILT_APP_STORE_APP_ID` (+ optional `BILT_APPLE_TEAM_ID`, `EXPO_APPLE_ID`)

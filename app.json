@@ -62,6 +62,13 @@
         {
           "microphonePermission": "Allow chakraOS to record voice journal entries on this device."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow chakraOS to use the camera so Palm Field and Mudra practice can show your hand on screen.",
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "experiments": {

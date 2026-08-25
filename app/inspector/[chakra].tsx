@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { PenLine, Play, X } from 'lucide-react-native';
+import { Hand, PenLine, Play, X } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Text } from 'heroui-native';
@@ -9,6 +9,8 @@ import { surfacedSignalsFor } from '@/lib/agents/coach';
 import { CHAKRA_BY_KEY, isChakraKey } from '@/lib/chakras';
 import { paletteForKey } from '@/lib/frequency';
 import { FREQUENCY_BY_KEY } from '@/lib/frequency/registry';
+import { MUDRA_BY_CHAKRA, mudraSessionsFor } from '@/lib/mudras';
+import { palmPointsFor } from '@/lib/palm';
 import { useChakraStore } from '@/lib/store';
 import type { ChakraKey } from '@/lib/types';
 
@@ -33,6 +35,15 @@ export default function InspectorScreen() {
     .slice(0, 3);
   const relatedSessions = sessions.filter((s) => s.chakra === key).slice(0, 3);
 
+  const palmPoint = palmPointsFor('right').find((p) => p.key === key);
+  const mudra = MUDRA_BY_CHAKRA[key];
+  const mudraHolds = mudraSessionsFor(key, sessions);
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const journalSignals7d = entries.filter(
+    (e) =>
+      e.createdAt >= weekAgo && (e.seededChakra === key || e.tags.some((t) => t.chakra === key)),
+  ).length;
+
   return (
     <View className="bg-field flex-1">
       <ScrollView
@@ -42,8 +53,8 @@ export default function InspectorScreen() {
         <View className="pt-safe-offset-4 px-5">
           <View className="flex-row items-start justify-between">
             <Mono style={{ color: palette.color }}>
-              {def.name.split(' ')[0].toUpperCase()} · {(def.bija || node.bija || '').toUpperCase()} ·{' '}
-              {node.baseFrequencyHz} HZ · beat {node.beatFrequencyHz}
+              {def.name.split(' ')[0].toUpperCase()} · {(def.bija || node.bija || '').toUpperCase()}{' '}
+              · {node.baseFrequencyHz} HZ · beat {node.beatFrequencyHz}
             </Mono>
             <Pressable onPress={() => router.back()} hitSlop={12}>
               <X color="#8a90a6" size={20} />
@@ -90,14 +101,54 @@ export default function InspectorScreen() {
             ))}
           </View>
 
+          <Mono className="mt-6">PALM POINT</Mono>
+          <Panel className="mt-2 p-4">
+            <Display size={18} color={palette.color}>
+              {def.name.split(' ')[0].toUpperCase()} POINT
+            </Display>
+            <Text className="text-faint mt-1 font-mono" style={{ fontSize: 9, letterSpacing: 1 }}>
+              {(palmPoint?.zone ?? 'palm centre').toUpperCase()}
+            </Text>
+            <Text className="text-mute mt-2" style={{ fontSize: 12, lineHeight: 18 }}>
+              {palmPoint?.reading ?? 'projected onto the palm'} · {def.attributes.join(' · ')}
+            </Text>
+
+            <View className="border-line/70 mt-3 flex-row border-t pt-3">
+              <View className="flex-1">
+                <Mono size={8}>FIELD ENERGY</Mono>
+                <View className="mt-1 flex-row items-baseline">
+                  <Text className="font-mono-bold" style={{ fontSize: 18, color: palette.color }}>
+                    {energy}
+                  </Text>
+                  <Text className="text-faint font-mono" style={{ fontSize: 10 }}>
+                    /100
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-1">
+                <Mono size={8}>JOURNAL · 7D</Mono>
+                <Text className="text-ink font-mono-bold mt-1" style={{ fontSize: 18 }}>
+                  {journalSignals7d}
+                </Text>
+              </View>
+              <View className="flex-1">
+                <Mono size={8}>MUDRA ACTIVITY</Mono>
+                <Text className="text-ink font-mono-bold mt-1" style={{ fontSize: 18 }}>
+                  {mudraHolds.length}
+                </Text>
+              </View>
+            </View>
+
+            <Text className="text-faint mt-3" style={{ fontSize: 10, lineHeight: 15 }}>
+              This point is a projection of the numbers above onto your hand. It reads nothing from
+              your palm.
+            </Text>
+          </Panel>
+
           <Mono className="mt-6">DERIVED COLOUR · FROM {node.baseFrequencyHz} HZ</Mono>
           <View className="mt-2 flex-row gap-2">
             {palette.gradient.map((g) => (
-              <View
-                key={g}
-                className="h-8 flex-1 rounded-lg"
-                style={{ backgroundColor: g }}
-              />
+              <View key={g} className="h-8 flex-1 rounded-lg" style={{ backgroundColor: g }} />
             ))}
           </View>
 
@@ -168,9 +219,9 @@ export default function InspectorScreen() {
             )}
           </View>
 
-          <View className="mt-7 flex-row gap-3">
+          <View className="mt-7 gap-3">
             <Pressable
-              className="flex-1 flex-row items-center justify-center gap-2 rounded-xl py-3.5"
+              className="flex-row items-center justify-center gap-2 rounded-xl py-3.5"
               style={{ backgroundColor: palette.color }}
               onPress={() => {
                 router.replace({ pathname: '/session', params: { chakra: key } });
@@ -181,18 +232,33 @@ export default function InspectorScreen() {
                 BEGIN {node.baseFrequencyHz} HZ SESSION
               </Text>
             </Pressable>
-            <Pressable
-              className="border-line flex-row items-center justify-center gap-2 rounded-xl border px-4 py-3.5"
-              onPress={() => {
-                router.back();
-                router.navigate({ pathname: '/(tabs)/journal', params: { seed: key } });
-              }}
-            >
-              <PenLine color="#e9ecf5" size={14} />
-              <Text className="font-mono" style={{ fontSize: 12, color: '#e9ecf5' }}>
-                REFLECT
-              </Text>
-            </Pressable>
+
+            <View className="flex-row gap-3">
+              <Pressable
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border py-3.5"
+                style={{ borderColor: `${palette.color}77`, backgroundColor: `${palette.color}14` }}
+                onPress={() => {
+                  router.replace({ pathname: '/mudra/[key]', params: { key: mudra.key } });
+                }}
+              >
+                <Hand color={palette.color} size={14} />
+                <Text className="font-mono" style={{ fontSize: 12, color: palette.color }}>
+                  TRY MUDRA · {mudra.name.toUpperCase()}
+                </Text>
+              </Pressable>
+              <Pressable
+                className="border-line flex-row items-center justify-center gap-2 rounded-xl border px-4 py-3.5"
+                onPress={() => {
+                  router.back();
+                  router.navigate({ pathname: '/(tabs)/journal', params: { seed: key } });
+                }}
+              >
+                <PenLine color="#e9ecf5" size={14} />
+                <Text className="font-mono" style={{ fontSize: 12, color: '#e9ecf5' }}>
+                  REFLECT
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </ScrollView>

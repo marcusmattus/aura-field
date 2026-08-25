@@ -67,11 +67,15 @@ export default function JournalScreen() {
     const body = text.trim();
     const hasVoice = voiceMode && Boolean(voiceNote?.uri);
     if (!body && !hasVoice) return;
-    void addEntry(body || '[Voice note — transcribing…]', voiceMode || hasVoice ? 'voice' : 'text', {
-      seededChakra: seeded,
-      voiceUrl: hasVoice ? voiceNote?.uri : undefined,
-      voiceDurationS: hasVoice ? voiceNote?.durationS : undefined,
-    });
+    void addEntry(
+      body || '[Voice note — transcribing…]',
+      voiceMode || hasVoice ? 'voice' : 'text',
+      {
+        seededChakra: seeded,
+        voiceUrl: hasVoice ? voiceNote?.uri : undefined,
+        voiceDurationS: hasVoice ? voiceNote?.durationS : undefined,
+      },
+    );
     setText('');
     setVoiceNote(null);
   };

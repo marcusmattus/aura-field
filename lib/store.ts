@@ -19,6 +19,8 @@ import {
   uploadVoiceNote,
 } from '@/lib/db';
 import { FREQUENCY_BY_KEY } from '@/lib/frequency/registry';
+import { mudraHz, mudraSessionKey } from '@/lib/mudras';
+import { palmSnapshot } from '@/lib/palm';
 import { fetchProfile, hasBackend, saveProfile, signOutUser, supabase } from '@/lib/supabase';
 import { enqueueOutbox } from '@/lib/sync/outbox';
 import type {
@@ -30,6 +32,8 @@ import type {
   Intention,
   JournalEntry,
   Modality,
+  PalmHand,
+  PalmScan,
   UserProfile,
 } from '@/lib/types';
 
@@ -61,6 +65,8 @@ interface ChakraOSState {
   profile: UserProfile | null;
   entries: JournalEntry[];
   sessions: CompletedSession[];
+  /** saved readings of the palm visualisation, newest first */
+  palmScans: PalmScan[];
   states: ChakraState[];
   fieldIndex: number;
   coachMessages: CoachMessage[];
@@ -93,6 +99,10 @@ interface ChakraOSState {
     beatHz?: number;
     brainwaveBand?: string;
   }) => void;
+  /** Save the current field state as a palm scan (Palm Field · ANALYZE PALM). */
+  capturePalmScan: (hand: PalmHand) => PalmScan;
+  /** Record a completed mudra hold. Feeds the field like a frequency session. */
+  completeMudra: (m: { mudraKey: string; chakra: ChakraKey; durationS: number }) => void;
   setIntention: (text: string) => void;
   completeOnboarding: () => void;
   subscribe: () => void;
@@ -156,6 +166,24 @@ function seedEntries(now: number): JournalEntry[] {
   });
 }
 
+/**
+ * One earlier palm reading for the demo install, derived from the seeded field
+ * with a small deterministic offset per node so COMPARE has a real baseline.
+ */
+function seedPalmScan(states: ChakraState[], at: number): PalmScan {
+  const offsets = [-4, 3, -7, -6, -9, -8, -2, -5, 4];
+  const shifted: ChakraState[] = states.map((s, i) => ({
+    ...s,
+    energy: Math.max(1, Math.min(100, s.energy + offsets[i % offsets.length])),
+  }));
+  return {
+    id: uid(),
+    capturedAt: at,
+    hand: 'right',
+    ...palmSnapshot(shifted, computeFieldIndex(shifted)),
+  };
+}
+
 export const useChakraStore = create<ChakraOSState>()(
   persist(
     (set, get) => ({
@@ -168,6 +196,7 @@ export const useChakraStore = create<ChakraOSState>()(
       profile: null,
       entries: [],
       sessions: [],
+      palmScans: [],
       states: initialStates,
       fieldIndex: 50,
       coachMessages: [],
@@ -296,9 +325,7 @@ export const useChakraStore = create<ChakraOSState>()(
               if (transcript) {
                 content = transcript;
                 set((s) => ({
-                  entries: s.entries.map((e) =>
-                    e.id === row.id ? { ...e, body: transcript } : e,
-                  ),
+                  entries: s.entries.map((e) => (e.id === row.id ? { ...e, body: transcript } : e)),
                 }));
                 get().recompute();
               }
@@ -456,7 +483,10 @@ export const useChakraStore = create<ChakraOSState>()(
             brainwaveBand: brainwaveBand ?? node.brainwaveBand,
           })
             .then(async () => {
-              const bump = Math.min(100, (get().states.find((s) => s.key === chakra)?.energy ?? 50) + 4);
+              const bump = Math.min(
+                100,
+                (get().states.find((s) => s.key === chakra)?.energy ?? 50) + 4,
+              );
               await insertChakraScores([{ chakra, score: bump, source: 'frequency_session' }]);
               const { data: userData } = await supabase!.auth.getUser();
               if (userData.user) {
@@ -476,6 +506,37 @@ export const useChakraStore = create<ChakraOSState>()(
                 payload: { chakra, hz, durationS, beatHz: beat },
               });
             });
+        }
+      },
+
+      capturePalmScan: (hand) => {
+        const { states, fieldIndex } = get();
+        const scan: PalmScan = {
+          id: uid(),
+          capturedAt: Date.now(),
+          hand,
+          ...palmSnapshot(states, fieldIndex),
+        };
+        set((s) => ({ palmScans: [scan, ...s.palmScans].slice(0, 30) }));
+        if (hasBackend) {
+          void trackAnalytics('palm_scan_captured', {
+            hand,
+            fieldIndex: scan.fieldIndex,
+            continuity: scan.continuity,
+          });
+        }
+        return scan;
+      },
+
+      completeMudra: ({ mudraKey, chakra, durationS }) => {
+        get().completeSession({
+          sessionKey: mudraSessionKey(mudraKey),
+          chakra,
+          hz: mudraHz(chakra),
+          durationS,
+        });
+        if (hasBackend) {
+          void trackAnalytics('mudra_hold_completed', { mudraKey, chakra, durationS });
         }
       },
 
@@ -542,6 +603,7 @@ export const useChakraStore = create<ChakraOSState>()(
         profile: s.profile,
         entries: s.entries,
         sessions: s.sessions,
+        palmScans: s.palmScans,
         coachMessages: s.coachMessages,
         breakthroughs: s.breakthroughs,
         xp: s.xp,
@@ -551,6 +613,8 @@ export const useChakraStore = create<ChakraOSState>()(
         intention: s.intention,
       }),
       onRehydrateStorage: () => (state) => {
+        if (state && !Array.isArray(state.palmScans)) state.palmScans = [];
+        let seeded = false;
         if (state && state.entries.length === 0) {
           const now = Date.now();
           state.entries = seedEntries(now);
@@ -568,14 +632,22 @@ export const useChakraStore = create<ChakraOSState>()(
           state.level = levelForXp(2847);
           state.streak = 14;
           state.lastJournalDay = startOfDay(now);
+          seeded = true;
         }
         state?.recompute();
+        // Give the demo install one earlier palm reading so COMPARE has a
+        // baseline to sit against on first run.
+        if (seeded) {
+          const live = useChakraStore.getState();
+          useChakraStore.setState({
+            palmScans: [seedPalmScan(live.states, Date.now() - 2 * DAY_MS)],
+          });
+        }
         useChakraStore.setState({ hydrated: true });
         // Reconcile the persisted auth flag with the real Supabase session: a
         // session may have expired since last launch. If still valid, refresh
         // the profile from the backend.
         void (async () => {
-          const { supabase } = await import('@/lib/supabase');
           if (!supabase) return;
           const { data } = await supabase.auth.getSession();
           if (data.session) {

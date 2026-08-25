@@ -151,9 +151,7 @@ export async function sendMagicLink(email: string): Promise<AuthResult> {
 }
 
 /** OAuth via Supabase (Apple / Google). Requires provider enabled in dashboard. */
-export async function signInWithOAuth(
-  provider: 'apple' | 'google',
-): Promise<AuthResult> {
+export async function signInWithOAuth(provider: 'apple' | 'google'): Promise<AuthResult> {
   if (!supabase) return { ok: false, error: 'Backend is not configured.' };
   const redirectTo = Linking.createURL('auth/callback');
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -182,10 +180,8 @@ export async function signInWithOAuth(
   }
 
   // Implicit fragment tokens (fallback)
-  const accessToken =
-    typeof query.access_token === 'string' ? query.access_token : null;
-  const refreshToken =
-    typeof query.refresh_token === 'string' ? query.refresh_token : null;
+  const accessToken = typeof query.access_token === 'string' ? query.access_token : null;
+  const refreshToken = typeof query.refresh_token === 'string' ? query.refresh_token : null;
   if (accessToken && refreshToken) {
     const { error: setErr } = await supabase.auth.setSession({
       access_token: accessToken,

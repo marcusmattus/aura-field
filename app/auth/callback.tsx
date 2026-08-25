@@ -12,7 +12,7 @@ import { useChakraStore } from '@/lib/store';
  */
 export default function AuthCallbackScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ code?: string; access_token?: string; refresh_token?: string }>();
+  const params = useLocalSearchParams();
   const onAuthenticated = useChakraStore((s) => s.onAuthenticated);
 
   useEffect(() => {

@@ -61,7 +61,9 @@ function rgbToHex({ r, g, b }: Rgb): string {
 }
 
 function withAlpha(hex: string, alpha: number): string {
-  const a = clamp(Math.round(alpha * 255), 0, 255).toString(16).padStart(2, '0');
+  const a = clamp(Math.round(alpha * 255), 0, 255)
+    .toString(16)
+    .padStart(2, '0');
   return `${hex}${a}`;
 }
 

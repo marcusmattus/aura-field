@@ -46,7 +46,10 @@ export async function chatComplete(
 
   const key = Deno.env.get('ANTHROPIC_API_KEY');
   if (!key) return null;
-  const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
+  const system = messages
+    .filter((m) => m.role === 'system')
+    .map((m) => m.content)
+    .join('\n\n');
   const rest = messages
     .filter((m) => m.role !== 'system')
     .map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
@@ -123,9 +126,7 @@ export async function chatStream(
                 const parsed = JSON.parse(payload);
                 const delta = parsed?.choices?.[0]?.delta?.content;
                 if (typeof delta === 'string' && delta.length) {
-                  controller.enqueue(
-                    encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`),
-                  );
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
                 }
               } catch {
                 /* skip */
