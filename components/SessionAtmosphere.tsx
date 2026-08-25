@@ -11,9 +11,9 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 
+import { SkiaGate } from '@/components/SkiaGate';
 import type { AtmospherePreset } from '@/lib/frequency/atmosphere';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useSkiaReady } from '@/lib/skia';
 
 type Props = {
   atmosphere: AtmospherePreset;
@@ -68,16 +68,18 @@ function Particle({
 }
 
 export function SessionAtmosphereView({ atmosphere, active }: Props) {
-  const skiaReady = useSkiaReady();
-  if (!skiaReady) {
-    return (
-      <View
-        style={[StyleSheet.absoluteFill, { backgroundColor: atmosphere.backgroundBottom }]}
-        pointerEvents="none"
-      />
-    );
-  }
-  return <SessionAtmosphereCanvas atmosphere={atmosphere} active={active} />;
+  return (
+    <SkiaGate
+      fallback={
+        <View
+          style={[StyleSheet.absoluteFill, { backgroundColor: atmosphere.backgroundBottom }]}
+          pointerEvents="none"
+        />
+      }
+    >
+      <SessionAtmosphereCanvas atmosphere={atmosphere} active={active} />
+    </SkiaGate>
+  );
 }
 
 function SessionAtmosphereCanvas({ atmosphere, active }: Props) {

@@ -34,13 +34,13 @@ import {
 import { Text } from 'heroui-native';
 
 import { buildPalmOutlinePath } from '@/components/palm/palmPath';
+import { SkiaGate } from '@/components/SkiaGate';
 import { Display, Mono, Panel } from '@/components/ui';
 import { useBreath } from '@/hooks/useBreath';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CHAKRA_BY_KEY } from '@/lib/chakras';
 import { MUDRAS, MUDRA_BY_KEY, mudraSessionsFor } from '@/lib/mudras';
 import { palmPointsFor } from '@/lib/palm';
-import { useSkiaReady } from '@/lib/skia';
 import { useChakraStore } from '@/lib/store';
 import type { ChakraKey } from '@/lib/types';
 
@@ -89,9 +89,11 @@ function MudraGuide(props: {
   accent: string;
   gathers: ChakraKey[];
 }) {
-  const skiaReady = useSkiaReady();
-  if (!skiaReady) return null;
-  return <MudraGuideCanvas {...props} />;
+  return (
+    <SkiaGate fallback={null}>
+      <MudraGuideCanvas {...props} />
+    </SkiaGate>
+  );
 }
 
 function MudraGuideCanvas({
@@ -115,6 +117,7 @@ function MudraGuideCanvas({
 
   return (
     <Canvas style={StyleSheet.absoluteFill}>
+      {/* oxlint-disable-next-line react/style-prop-object -- Skia style prop is a string enum, not RN StyleProp */}
       <Path path={outline} style="stroke" strokeWidth={1.4} color={accent} opacity={0.38}>
         <DashPathEffect intervals={[10, 8]} />
       </Path>
@@ -136,9 +139,11 @@ function MudraGuideCanvas({
 }
 
 function HoldRing(props: { progress: DerivedValue<number>; color: string; size: number }) {
-  const skiaReady = useSkiaReady();
-  if (!skiaReady) return <View style={{ width: props.size, height: props.size }} />;
-  return <HoldRingCanvas {...props} />;
+  return (
+    <SkiaGate fallback={<View style={{ width: props.size, height: props.size }} />}>
+      <HoldRingCanvas {...props} />
+    </SkiaGate>
+  );
 }
 
 function HoldRingCanvas({
@@ -159,6 +164,7 @@ function HoldRingCanvas({
     <Canvas style={{ width: size, height: size }}>
       <Path
         path={ring}
+        // oxlint-disable-next-line react/style-prop-object -- Skia style prop is a string enum, not RN StyleProp
         style="stroke"
         strokeWidth={3}
         color="#1e2535"
@@ -168,6 +174,7 @@ function HoldRingCanvas({
       />
       <Path
         path={ring}
+        // oxlint-disable-next-line react/style-prop-object -- Skia style prop is a string enum, not RN StyleProp
         style="stroke"
         strokeWidth={3}
         strokeCap="round"

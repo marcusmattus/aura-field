@@ -29,9 +29,9 @@ import { Text } from 'heroui-native';
 import { useBreath } from '@/hooks/useBreath';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { buildPalmOutlinePath } from '@/components/palm/palmPath';
+import { SkiaGate } from '@/components/SkiaGate';
 import { CHAKRA_BY_KEY } from '@/lib/chakras';
 import { palmPointsFor, segmentStrengths, type PalmPoint } from '@/lib/palm';
-import { useSkiaReady } from '@/lib/skia';
 import type { ChakraKey, ChakraState, PalmHand } from '@/lib/types';
 
 export type PalmPhase = 'aligning' | 'scanning' | 'locked';
@@ -143,6 +143,7 @@ function ChannelSegment({
   return (
     <Path
       path={path}
+      // oxlint-disable-next-line react/style-prop-object -- Skia style prop is a string enum, not RN StyleProp
       style="stroke"
       strokeWidth={0.8 + strength * 2.2}
       strokeCap="round"
@@ -158,9 +159,11 @@ function ChannelSegment({
  * the whole rig so it stays anchored to their hand as they move it.
  */
 export function PalmRig(props: PalmRigProps) {
-  const skiaReady = useSkiaReady();
-  if (!skiaReady) return <View style={{ width: props.width, height: props.height }} />;
-  return <PalmRigCanvas {...props} />;
+  return (
+    <SkiaGate fallback={<View style={{ width: props.width, height: props.height }} />}>
+      <PalmRigCanvas {...props} />
+    </SkiaGate>
+  );
 }
 
 function PalmRigCanvas({
@@ -278,6 +281,7 @@ function PalmRigCanvas({
             </Path>
             <Path
               path={outline}
+              // oxlint-disable-next-line react/style-prop-object -- Skia style prop is a string enum, not RN StyleProp
               style="stroke"
               strokeWidth={1.4}
               color={accent}
@@ -317,6 +321,7 @@ function PalmRigCanvas({
                       cx={n.cx}
                       cy={n.cy}
                       r={n.baseR + 9}
+                      // oxlint-disable-next-line react/style-prop-object -- Skia style prop is a string enum, not RN StyleProp
                       style="stroke"
                       strokeWidth={1.2}
                       color={n.color}

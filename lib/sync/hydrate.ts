@@ -104,8 +104,8 @@ export function useCloudHydration(enabled: boolean) {
         id: row.id,
         sessionKey: `freq-${row.chakra_key}`,
         chakra: row.chakra_key as ChakraKey,
-        hz: Number(row.base_frequency_hz),
-        durationS: Number(row.duration_s),
+        hz: row.base_frequency_hz,
+        durationS: row.duration_s,
         completedAt: new Date(row.created_at).getTime(),
       }));
     if (mapped.length) syncSessionsFromCloud(mapped);

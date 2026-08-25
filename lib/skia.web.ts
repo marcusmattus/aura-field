@@ -10,22 +10,56 @@ import { useEffect, useState } from 'react';
  * every call (`Skia.Path.Make()`, `<Canvas>`) throws.
  *
  * We therefore load CanvasKit ourselves and copy a freshly built API onto the
- * very same object every Skia internal already holds a reference to. Components
- * wait on `useSkiaReady()` before drawing.
+ * very same object every Skia internal already holds a reference to. The copy is
+ * smoke-tested before anything is allowed to draw, and `components/SkiaGate`
+ * keeps a canvas that still fails from taking a screen down.
  */
 
 type CanvasKitInitFn = (opts: { locateFile: (file: string) => string }) => Promise<CanvasKitApi>;
-type SkiaApiFactory = (canvasKit: CanvasKitApi) => typeof Skia;
+type SkiaApi = typeof Skia;
+type SkiaApiFactory = (canvasKit: CanvasKitApi) => SkiaApi;
 
 /**
- * Pulled in with `require` so TypeScript never compiles the package's own
- * sources, while Metro still returns the very module instance the rest of the
- * app uses — the package's `react-native` entry resolves to `src`, so the API
- * built here shares its classes with Skia's renderer.
+ * Metro resolves this package through `module`/`browser` on web and through
+ * `react-native` on native, so the API the app actually holds can come from
+ * either build output. Both candidates are collected and the one whose classes
+ * match the live `Skia` object is preferred, which keeps objects we create
+ * interchangeable with the ones Skia's own renderer creates.
  */
-function skiaApiFactory(): SkiaApiFactory {
-  const mod: unknown = require('@shopify/react-native-skia/src/skia/web');
-  return (mod as { JsiSkApi: SkiaApiFactory }).JsiSkApi;
+function candidateFactories(): SkiaApiFactory[] {
+  const found: SkiaApiFactory[] = [];
+  const collect = (loadModule: () => unknown) => {
+    try {
+      const mod = loadModule();
+      if (
+        typeof mod === 'object' &&
+        mod !== null &&
+        'JsiSkApi' in mod &&
+        typeof mod.JsiSkApi === 'function'
+      ) {
+        // Type guards confirm `mod.JsiSkApi` is a function; the untyped `@shopify/react-native-skia`
+        // build output gives no further signature info, so matching it to `SkiaApiFactory` needs an
+        // assertion. `patchSkia` calls it inside a try/catch and discards the result if it throws.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see comment above.
+        found.push(mod.JsiSkApi as SkiaApiFactory);
+      }
+    } catch {
+      // Build output missing from this install — try the next one.
+    }
+  };
+  // Deliberately probing both Metro build outputs for JsiSkApi: require() (not a static import) is
+  // required so a missing build output throws here instead of failing module resolution at bundle time.
+  // oxlint-disable-next-line import/no-unassigned-import -- see comment above.
+  collect(() => require('@shopify/react-native-skia/lib/module/skia/web'));
+  // oxlint-disable-next-line import/no-unassigned-import -- see comment above.
+  collect(() => require('@shopify/react-native-skia/src/skia/web'));
+  return found;
+}
+
+/** Identity of the class behind `api.Path`, used to match build outputs. */
+function pathFactoryClass(api: SkiaApi): unknown {
+  const path: unknown = api.Path;
+  return typeof path === 'object' && path !== null ? path.constructor : undefined;
 }
 
 interface CanvasKitGlobals {
@@ -62,18 +96,6 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-async function initFrom(base: string): Promise<boolean> {
-  await loadScript(`${base}canvaskit.js`);
-  const init = globals.CanvasKitInit;
-  if (!init) return false;
-
-  const canvasKit = await init({ locateFile: (file) => `${base}${file}` });
-  // Skia's web views read the bare `CanvasKit` global at draw time.
-  globals.CanvasKit = canvasKit;
-  Object.assign(Skia, skiaApiFactory()(canvasKit));
-  return true;
-}
-
 /**
  * The dev server answers unknown paths with the app shell, so confirm the local
  * route really serves the script before handing it to a `<script>` tag.
@@ -87,20 +109,84 @@ async function servesCanvasKit(base: string): Promise<boolean> {
   }
 }
 
-async function load(): Promise<boolean> {
-  if (globals.CanvasKit) return true;
-  try {
-    if (await servesCanvasKit(LOCAL_BASE)) {
-      if (await initFrom(LOCAL_BASE)) return true;
+async function initFrom(base: string): Promise<CanvasKitApi | undefined> {
+  await loadScript(`${base}canvaskit.js`);
+  const init = globals.CanvasKitInit;
+  if (!init) return undefined;
+  return await init({ locateFile: (file) => `${base}${file}` });
+}
+
+/** Fetches the WASM backend, local dev-server copy first, public CDN second. */
+async function resolveCanvasKit(): Promise<CanvasKitApi | undefined> {
+  if (globals.CanvasKit) return globals.CanvasKit;
+
+  if (await servesCanvasKit(LOCAL_BASE)) {
+    try {
+      const local = await initFrom(LOCAL_BASE);
+      if (local) return local;
+    } catch {
+      // Local copy unusable — fall back to the public CDN.
     }
-  } catch {
-    // Local copy unusable — fall back to the public CDN below.
   }
   try {
     return await initFrom(CDN_BASE);
   } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Rebuilds the Skia API against a live CanvasKit and proves it can draw. Returns
+ * false when no build output produces a working API, so callers keep rendering
+ * placeholders instead of crashing on the first `Skia.*` call.
+ */
+function patchSkia(canvasKit: CanvasKitApi): boolean {
+  const liveClass = pathFactoryClass(Skia);
+  const built: SkiaApi[] = [];
+  for (const factory of candidateFactories()) {
+    try {
+      built.push(factory(canvasKit));
+    } catch {
+      // Factory unusable with this CanvasKit build — try the next one.
+    }
+  }
+  // Same-build output first, then anything that works.
+  const ordered = [
+    ...built.filter((api) => pathFactoryClass(api) === liveClass),
+    ...built.filter((api) => pathFactoryClass(api) !== liveClass),
+  ];
+
+  for (const api of ordered) {
+    try {
+      Object.assign(Skia, api);
+      // Smoke test: this is the exact call that used to throw.
+      const probe: unknown = Skia.Path.Make();
+      if (
+        typeof probe === 'object' &&
+        probe !== null &&
+        'dispose' in probe &&
+        typeof probe.dispose === 'function'
+      ) {
+        probe.dispose();
+      }
+      return true;
+    } catch {
+      // Leave the object patched by the next candidate instead.
+    }
+  }
+  console.warn('[skia] CanvasKit loaded but no Skia build output could draw — canvases disabled.');
+  return false;
+}
+
+async function load(): Promise<boolean> {
+  const canvasKit = await resolveCanvasKit();
+  if (!canvasKit) {
+    console.warn('[skia] CanvasKit could not be loaded — canvases render as empty space.');
     return false;
   }
+  // Skia's web views read the bare `CanvasKit` global at draw time.
+  globals.CanvasKit = canvasKit;
+  return patchSkia(canvasKit);
 }
 
 /** Loads CanvasKit once per session. Resolves false when it is unavailable. */
@@ -132,3 +218,8 @@ export function useSkiaReady(): boolean {
 
   return isReady;
 }
+
+// Start on module evaluation rather than from a mount effect: after a hot reload
+// the tree is not remounted, and the backend should be on its way before the
+// first canvas asks for it.
+if (typeof document !== 'undefined') void loadSkiaWeb();

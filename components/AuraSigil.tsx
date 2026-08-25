@@ -2,8 +2,8 @@ import { Canvas, Circle, Group, Path, Skia } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
 import { View } from 'react-native';
 
+import { SkiaGate } from '@/components/SkiaGate';
 import { CHAKRA_BY_KEY, CHAKRA_ORDER } from '@/lib/chakras';
-import { useSkiaReady } from '@/lib/skia';
 import type { ChakraState } from '@/lib/types';
 
 interface AuraSigilProps {
@@ -16,9 +16,11 @@ interface AuraSigilProps {
  * from center scales with energy; same node colors as the body field.
  */
 export function AuraSigil({ states, size }: AuraSigilProps) {
-  const skiaReady = useSkiaReady();
-  if (!skiaReady) return <View style={{ width: size, height: size }} />;
-  return <AuraSigilCanvas states={states} size={size} />;
+  return (
+    <SkiaGate fallback={<View style={{ width: size, height: size }} />}>
+      <AuraSigilCanvas states={states} size={size} />
+    </SkiaGate>
+  );
 }
 
 function AuraSigilCanvas({ states, size }: AuraSigilProps) {

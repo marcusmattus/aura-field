@@ -4,8 +4,8 @@ import { Pressable, View } from 'react-native';
 import { useDerivedValue, type DerivedValue } from 'react-native-reanimated';
 import { Text } from 'heroui-native';
 
+import { SkiaGate } from '@/components/SkiaGate';
 import { CHAKRA_BY_KEY, CHAKRA_ORDER } from '@/lib/chakras';
-import { useSkiaReady } from '@/lib/skia';
 import type { ChakraKey, ChakraState } from '@/lib/types';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useBreath } from '@/hooks/useBreath';
@@ -115,7 +115,6 @@ export function BodyField({ states, width, onSelectNode }: BodyFieldProps) {
   const cx = width / 2;
   const reduced = useReducedMotion();
   const breath = useBreath(reduced);
-  const skiaReady = useSkiaReady();
 
   const nodes = useMemo<NodeView[]>(
     () =>
@@ -131,9 +130,9 @@ export function BodyField({ states, width, onSelectNode }: BodyFieldProps) {
 
   return (
     <View style={{ width, height }}>
-      {skiaReady ? (
+      <SkiaGate fallback={null}>
         <FieldCanvas nodes={nodes} cx={cx} width={width} height={height} breath={breath} />
-      ) : null}
+      </SkiaGate>
       {/* tap targets + labels */}
       {nodes.map((n) => {
         const chakra = CHAKRA_BY_KEY[n.key];

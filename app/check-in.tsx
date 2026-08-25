@@ -36,19 +36,23 @@ const MORNING_SCALES: { key: keyof DailyCheckInInput; label: string }[] = [
   { key: 'breathing', label: 'Breathing' },
 ];
 
+/** Lightweight 0-10 scale to 0-100 score mapping, default to a neutral 50 when unset. */
+function scaleToScore(n?: number): number {
+  return typeof n === 'number' ? n * 10 : 50;
+}
+
 function scoresFromCheckIn(input: DailyCheckInInput): { chakra: ChakraKey; score: number }[] {
   // Lightweight mapping from check-in axes → nodes (observational, not diagnostic)
-  const m = (n?: number) => (typeof n === 'number' ? n * 10 : 50);
   const rows: { chakra: ChakraKey; score: number }[] = [
-    { chakra: 'heart', score: m(input.mood) },
-    { chakra: 'solar', score: m(input.energy) },
-    { chakra: 'third', score: m(input.focus) },
-    { chakra: 'root', score: Math.max(0, 100 - m(input.stress) + 50) / 1.5 },
-    { chakra: 'earth', score: m(input.sleep) },
-    { chakra: 'soul', score: m(input.purpose) },
-    { chakra: 'solar', score: m(input.confidence) },
-    { chakra: 'sacral', score: m(input.body) },
-    { chakra: 'throat', score: m(input.breathing) },
+    { chakra: 'heart', score: scaleToScore(input.mood) },
+    { chakra: 'solar', score: scaleToScore(input.energy) },
+    { chakra: 'third', score: scaleToScore(input.focus) },
+    { chakra: 'root', score: Math.max(0, 100 - scaleToScore(input.stress) + 50) / 1.5 },
+    { chakra: 'earth', score: scaleToScore(input.sleep) },
+    { chakra: 'soul', score: scaleToScore(input.purpose) },
+    { chakra: 'solar', score: scaleToScore(input.confidence) },
+    { chakra: 'sacral', score: scaleToScore(input.body) },
+    { chakra: 'throat', score: scaleToScore(input.breathing) },
   ];
   return rows.map((row) => ({
     chakra: row.chakra,
