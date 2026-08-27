@@ -103,6 +103,19 @@ interface ChakraOSState {
   capturePalmScan: (hand: PalmHand) => PalmScan;
   /** Record a completed mudra hold. Feeds the field like a frequency session. */
   completeMudra: (m: { mudraKey: string; chakra: ChakraKey; durationS: number }) => void;
+  /** Add XP outside the fixed sesssion/entry amounts (e.g. Mudra Vision's
+   * configurable, completion-based awards — see lib/vision/xp.ts). */
+  awardXp: (amount: number) => void;
+  /** Record a completed Mudra Vision (camera alignment) session. Feeds the
+   * field like any other practice, but XP is computed by the caller from
+   * lib/vision/xp.ts rather than a fixed amount, since XP here rewards
+   * completing the hold, never the physical form-match score achieved. */
+  completeMudraVisionSession: (input: {
+    mudraKey: string;
+    chakras: ChakraKey[];
+    durationS: number;
+    xp: number;
+  }) => void;
   setIntention: (text: string) => void;
   completeOnboarding: () => void;
   subscribe: () => void;
@@ -537,6 +550,29 @@ export const useChakraStore = create<ChakraOSState>()(
         });
         if (hasBackend) {
           void trackAnalytics('mudra_hold_completed', { mudraKey, chakra, durationS });
+        }
+      },
+
+      awardXp: (amount) => {
+        const xp = get().xp + amount;
+        set({ xp, level: levelForXp(xp) });
+      },
+
+      completeMudraVisionSession: ({ mudraKey, chakras, durationS, xp }) => {
+        const chakra = chakras[0] ?? 'heart';
+        const session: CompletedSession = {
+          id: uid(),
+          sessionKey: `mudra-vision:${mudraKey}`,
+          chakra,
+          hz: FREQUENCY_BY_KEY[chakra].baseFrequencyHz,
+          durationS,
+          completedAt: Date.now(),
+        };
+        set((s) => ({ sessions: [session, ...s.sessions] }));
+        get().recompute();
+        get().awardXp(xp);
+        if (hasBackend) {
+          void trackAnalytics('mudra_vision_session_completed', { mudraKey, durationS, xp });
         }
       },
 
