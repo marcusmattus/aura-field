@@ -125,6 +125,10 @@ function RootNavigator({ navigatorReady }: { navigatorReady: boolean }) {
         <Stack.Screen name="mudras/[mudra]" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="mudras/camera" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="mudras/compare" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="virtues/index" options={{ headerShown: false }} />
+        <Stack.Screen name="virtues/[virtue]" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="settings" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="privacy" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
     </HeroUINativeProvider>
   );

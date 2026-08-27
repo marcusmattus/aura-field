@@ -46,6 +46,14 @@ export interface EntryTag {
   weight: number; // 0-1
 }
 
+/** A virtue theme surfaced from a journal entry — see lib/agents/virtue.ts.
+ * `virtue` is a key into lib/virtues.ts's VIRTUE_BY_KEY. */
+export interface VirtueTag {
+  virtue: string;
+  theme: string;
+  weight: number; // 0-1
+}
+
 export interface SurfacedSignal {
   phrase: string;
   signal: string;
@@ -59,6 +67,8 @@ export interface JournalEntry {
   createdAt: number;
   tags: EntryTag[];
   themes: string[];
+  /** virtue themes surfaced from this entry, if the Virtue framework is on */
+  virtueTags?: VirtueTag[];
   /** chakra this entry was pre-seeded to, if any */
   seededChakra?: ChakraKey;
   /** local file URI of the recorded voice note, if modality is voice */

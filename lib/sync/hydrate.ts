@@ -25,7 +25,7 @@ import { isChakraKey } from '@/lib/chakras';
 import { hasBackend, supabase } from '@/lib/supabase';
 import { useChakraStore } from '@/lib/store';
 import { peekOutbox, removeOutboxOp } from '@/lib/sync/outbox';
-import type { ChakraKey, CompletedSession, EntryTag, JournalEntry, Modality } from '@/lib/types';
+import type { ChakraKey, CompletedSession, EntryTag, JournalEntry, Modality, VirtueTag } from '@/lib/types';
 
 function rowToEntry(row: {
   id: string;
@@ -33,6 +33,7 @@ function rowToEntry(row: {
   modality: string;
   themes: string[];
   tags: unknown;
+  virtue_tags?: unknown;
   seeded_chakra: string | null;
   voice_storage_path: string | null;
   voice_duration_s: number | null;
@@ -45,6 +46,7 @@ function rowToEntry(row: {
     createdAt: new Date(row.created_at).getTime(),
     themes: row.themes ?? [],
     tags: (row.tags as EntryTag[]) ?? [],
+    virtueTags: (row.virtue_tags as VirtueTag[] | undefined) ?? [],
     seededChakra: (row.seeded_chakra as ChakraKey | null) ?? undefined,
     voiceUrl: row.voice_storage_path ?? undefined,
     voiceDurationS: row.voice_duration_s ?? undefined,

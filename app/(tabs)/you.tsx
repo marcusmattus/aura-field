@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { Check, LogOut, Settings, Sparkles } from 'lucide-react-native';
+import { Check, ChevronRight, Compass, LogOut, Settings, Sparkles } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Alert, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
@@ -27,6 +27,7 @@ export default function YouScreen() {
   const cancelSubscription = useChakraStore((s) => s.cancelSubscription);
   const profile = useChakraStore((s) => s.profile);
   const signOut = useChakraStore((s) => s.signOut);
+  const frameworks = useChakraStore((s) => s.frameworks);
 
   const displayName = profile?.displayName?.trim() || 'Seeker';
   const intentionDay = useMemo(() => {
@@ -97,7 +98,7 @@ export default function YouScreen() {
             >
               <Mono style={{ color: '#0a0e18' }}>CHECK-IN</Mono>
             </Pressable>
-            <Pressable hitSlop={10} onPress={() => router.push('/profile-setup')}>
+            <Pressable hitSlop={10} onPress={() => router.push('/settings')}>
               <Settings color="#8a90a6" size={20} />
             </Pressable>
           </View>
@@ -142,6 +143,27 @@ export default function YouScreen() {
           </Mono>
         </Panel>
       </View>
+
+      {frameworks.virtue ? (
+        <View className="mt-5 px-4">
+          <Pressable onPress={() => router.push('/virtues')} accessibilityRole="button">
+            <Panel className="flex-row items-center gap-3 p-4">
+              <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: '#c9a75c22' }}>
+                <Compass color="#c9a75c" size={16} />
+              </View>
+              <View className="flex-1">
+                <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 14, color: '#e9ecf5' }}>
+                  Virtues
+                </Text>
+                <Text className="text-faint mt-0.5" style={{ fontSize: 11 }}>
+                  Choose what you want to cultivate
+                </Text>
+              </View>
+              <ChevronRight color="#565c72" size={16} />
+            </Panel>
+          </Pressable>
+        </View>
+      ) : null}
 
       {profile?.focusAreas && profile.focusAreas.length > 0 ? (
         <View className="mt-5 px-4">

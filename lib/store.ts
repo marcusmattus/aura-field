@@ -7,7 +7,10 @@ import { coachRespond, type CoachReply } from '@/lib/agents/coach';
 import { computeFieldIndex, recomputeField } from '@/lib/agents/field';
 import { detectBreakthroughs } from '@/lib/agents/oracle';
 import { remoteAnalyze, remoteCoach } from '@/lib/agents/remote';
+import { analyzeVirtueEntry } from '@/lib/agents/virtue';
 import { CHAKRA_ORDER } from '@/lib/chakras';
+import { recordVirtueReflections } from '@/lib/db/virtues';
+import { visibleVirtues } from '@/lib/virtues';
 import {
   createJournalEntry,
   deleteJournalEntry,
@@ -38,6 +41,26 @@ import type {
 } from '@/lib/types';
 
 const DAY_MS = 86_400_000;
+
+/** Independently toggleable frameworks (spec §52). Nobody is defaulted into
+ * a religious framework — christianMode starts off even when virtue is on. */
+export interface FrameworkSettings {
+  chakra: boolean;
+  mudra: boolean;
+  palm: boolean;
+  virtue: boolean;
+  christianMode: boolean;
+  crossFrameworkLinks: boolean;
+}
+
+const DEFAULT_FRAMEWORKS: FrameworkSettings = {
+  chakra: true,
+  mudra: true,
+  palm: true,
+  virtue: true,
+  christianMode: false,
+  crossFrameworkLinks: true,
+};
 
 function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -76,6 +99,7 @@ interface ChakraOSState {
   streak: number;
   lastJournalDay: number | null;
   intention: Intention;
+  frameworks: FrameworkSettings;
 
   // actions
   setCoachMessages: (messages: CoachMessage[]) => void;
@@ -116,6 +140,8 @@ interface ChakraOSState {
     durationS: number;
     xp: number;
   }) => void;
+  /** Enable/disable one framework independently — never forces a framework on. */
+  setFrameworkEnabled: (key: keyof FrameworkSettings, enabled: boolean) => void;
   setIntention: (text: string) => void;
   completeOnboarding: () => void;
   subscribe: () => void;
@@ -224,6 +250,7 @@ export const useChakraStore = create<ChakraOSState>()(
         totalDays: 30,
         startedAt: Date.now(),
       },
+      frameworks: DEFAULT_FRAMEWORKS,
 
       setCoachMessages: (messages) => set({ coachMessages: messages }),
 
@@ -272,6 +299,16 @@ export const useChakraStore = create<ChakraOSState>()(
         let content = body;
         // optimistic local analysis
         let analysis = analyzeEntry(content, modality, seededChakra);
+        const frameworks = get().frameworks;
+        const virtueKeys = frameworks.virtue
+          ? new Set(
+              visibleVirtues({
+                virtueFramework: frameworks.virtue,
+                christianMode: frameworks.christianMode,
+              }).map((v) => v.key),
+            )
+          : undefined;
+        const virtueAnalysis = frameworks.virtue ? analyzeVirtueEntry(content, virtueKeys) : null;
         const entry: JournalEntry = {
           id: uid(),
           body: content,
@@ -279,6 +316,7 @@ export const useChakraStore = create<ChakraOSState>()(
           createdAt: now,
           tags: analysis.tags,
           themes: analysis.themes,
+          virtueTags: virtueAnalysis?.tags,
           seededChakra,
           voiceUrl: opts?.voiceUrl,
           voiceDurationS: opts?.voiceDurationS,
@@ -315,6 +353,7 @@ export const useChakraStore = create<ChakraOSState>()(
               modality,
               themes: analysis.themes,
               tags: analysis.tags,
+              virtueTags: virtueAnalysis?.tags,
               seededChakra,
               voiceStoragePath: voicePath,
               voiceDurationS: opts?.voiceDurationS,
@@ -323,6 +362,12 @@ export const useChakraStore = create<ChakraOSState>()(
             set((s) => ({
               entries: s.entries.map((e) => (e.id === entry.id ? { ...e, id: row.id } : e)),
             }));
+
+            if (virtueAnalysis && virtueAnalysis.tags.length > 0) {
+              void recordVirtueReflections(row.id, virtueAnalysis.tags).catch(() => {
+                // local virtueTags on the entry are already saved; not fatal
+              });
+            }
 
             if (voicePath) {
               const { data: userData } = await supabase!.auth.getUser();
@@ -558,6 +603,11 @@ export const useChakraStore = create<ChakraOSState>()(
         set({ xp, level: levelForXp(xp) });
       },
 
+      setFrameworkEnabled: (key, enabled) => {
+        set((s) => ({ frameworks: { ...s.frameworks, [key]: enabled } }));
+        if (hasBackend) void trackAnalytics('framework_toggled', { key, enabled });
+      },
+
       completeMudraVisionSession: ({ mudraKey, chakras, durationS, xp }) => {
         const chakra = chakras[0] ?? 'heart';
         const session: CompletedSession = {
@@ -647,9 +697,11 @@ export const useChakraStore = create<ChakraOSState>()(
         streak: s.streak,
         lastJournalDay: s.lastJournalDay,
         intention: s.intention,
+        frameworks: s.frameworks,
       }),
       onRehydrateStorage: () => (state) => {
         if (state && !Array.isArray(state.palmScans)) state.palmScans = [];
+        if (state && !state.frameworks) state.frameworks = DEFAULT_FRAMEWORKS;
         let seeded = false;
         if (state && state.entries.length === 0) {
           const now = Date.now();
