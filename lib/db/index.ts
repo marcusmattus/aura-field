@@ -3,7 +3,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import type { ChakraKey, EntryTag, Modality, Protocol } from '@/lib/types';
+import type { ChakraKey, EntryTag, Modality, Protocol, VirtueTag } from '@/lib/types';
 import type { ConversationMode } from '@/lib/ai/types';
 
 export type CheckInKind = 'morning' | 'evening';
@@ -33,6 +33,7 @@ export interface JournalRow {
   modality: Modality;
   themes: string[];
   tags: EntryTag[];
+  virtue_tags: VirtueTag[];
   seeded_chakra: string | null;
   voice_storage_path: string | null;
   voice_duration_s: number | null;
@@ -136,6 +137,7 @@ export async function createJournalEntry(input: {
   modality?: Modality;
   themes?: string[];
   tags?: EntryTag[];
+  virtueTags?: VirtueTag[];
   seededChakra?: ChakraKey;
   voiceStoragePath?: string;
   voiceDurationS?: number;
@@ -151,6 +153,7 @@ export async function createJournalEntry(input: {
       modality: input.modality ?? 'text',
       themes: input.themes ?? [],
       tags: input.tags ?? [],
+      virtue_tags: input.virtueTags ?? [],
       seeded_chakra: input.seededChakra ?? null,
       voice_storage_path: input.voiceStoragePath ?? null,
       voice_duration_s: input.voiceDurationS ?? null,
@@ -181,15 +184,21 @@ export async function updateJournalEntry(
     body?: string;
     themes?: string[];
     tags?: EntryTag[];
+    virtueTags?: VirtueTag[];
     transcript?: string;
   },
 ): Promise<JournalRow> {
   const client = requireClient();
   const userId = await requireUserId();
+  const { body, themes, tags, virtueTags, transcript } = patch;
   const { data, error } = await client
     .from('journal_entries')
     .update({
-      ...patch,
+      ...(body !== undefined && { body }),
+      ...(themes !== undefined && { themes }),
+      ...(tags !== undefined && { tags }),
+      ...(virtueTags !== undefined && { virtue_tags: virtueTags }),
+      ...(transcript !== undefined && { transcript }),
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)

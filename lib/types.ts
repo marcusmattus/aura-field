@@ -46,6 +46,14 @@ export interface EntryTag {
   weight: number; // 0-1
 }
 
+/** A virtue theme surfaced from a journal entry — see lib/agents/virtue.ts.
+ * `virtue` is a key into lib/virtues.ts's VIRTUE_BY_KEY. */
+export interface VirtueTag {
+  virtue: string;
+  theme: string;
+  weight: number; // 0-1
+}
+
 export interface SurfacedSignal {
   phrase: string;
   signal: string;
@@ -59,6 +67,8 @@ export interface JournalEntry {
   createdAt: number;
   tags: EntryTag[];
   themes: string[];
+  /** virtue themes surfaced from this entry, if the Virtue framework is on */
+  virtueTags?: VirtueTag[];
   /** chakra this entry was pre-seeded to, if any */
   seededChakra?: ChakraKey;
   /** local file URI of the recorded voice note, if modality is voice */
@@ -165,4 +175,61 @@ export interface UserProfile {
   baselineMood: BaselineMood | null;
   experienceLevel: ExperienceLevel | null;
   primaryIntention: string;
+}
+
+// ---------------------------------------------------------------------------
+// Goals & habits (M9 — Advanced Personal OS)
+// ---------------------------------------------------------------------------
+
+export type GoalStatus = 'active' | 'completed' | 'archived';
+
+export interface Goal {
+  id: string;
+  title: string;
+  /** why this goal matters, in the user's own words */
+  intention: string;
+  chakra?: ChakraKey;
+  status: GoalStatus;
+  createdAt: number;
+  targetDate: number | null;
+  completedAt: number | null;
+}
+
+export type HabitCadence = 'daily' | 'weekly';
+
+export interface Habit {
+  id: string;
+  goalId: string | null;
+  title: string;
+  cadence: HabitCadence;
+  createdAt: number;
+  archivedAt: number | null;
+}
+
+/** One voluntary completion of a habit. */
+export interface HabitEvent {
+  id: string;
+  habitId: string;
+  completedAt: number;
+}
+
+export type ReviewPeriod = 'weekly' | 'monthly';
+
+/** Deterministic stats a review is built from — see lib/agents/review.ts. */
+export interface ReviewStats {
+  period: ReviewPeriod;
+  windowStart: number;
+  windowEnd: number;
+  journalEntryCount: number;
+  fieldIndexStart: number;
+  fieldIndexEnd: number;
+  topRisingChakra: ChakraKey | null;
+  topFallingChakra: ChakraKey | null;
+  virtueReflectionCount: number;
+  virtuePracticeCount: number;
+  mudraSessionCount: number;
+  habitsCompleted: number;
+  habitsScheduled: number;
+  activeGoalCount: number;
+  completedGoalCount: number;
 }

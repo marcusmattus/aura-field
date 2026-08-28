@@ -1,20 +1,20 @@
 import { useIsFocused } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
 
 import { FieldPanel } from '@/components/body/FieldPanel';
 import { MudraPanel } from '@/components/body/MudraPanel';
 import { PalmPanel } from '@/components/body/PalmPanel';
-import { Mono } from '@/components/ui';
+import { Mono, Panel } from '@/components/ui';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
 
 type BodyView = 'field' | 'palm' | 'mudras';
 
-const VIEWS: { key: BodyView; label: string }[] = [
+const ALL_VIEWS: { key: BodyView; label: string }[] = [
   { key: 'field', label: 'FIELD' },
   { key: 'palm', label: 'PALM' },
   { key: 'mudras', label: 'MUDRAS' },
@@ -24,13 +24,28 @@ const VIEWS: { key: BodyView; label: string }[] = [
  * Body — the physical visualisation hub.
  * Field: the full-body nine-node channel. Palm: the camera palm chakra map.
  * Mudras: the camera hand-position practice.
+ * Each tab honors its framework toggle in Settings (spec §52) — a user who
+ * turns Mudra Practice off simply never sees it here.
  */
 export default function BodyScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isFocused = useIsFocused();
   const fieldIndex = useChakraStore((s) => s.fieldIndex);
+  const frameworks = useChakraStore((s) => s.frameworks);
   const [view, setView] = useState<BodyView>('field');
+
+  const VIEWS = useMemo(
+    () =>
+      ALL_VIEWS.filter(
+        (v) =>
+          (v.key !== 'field' || frameworks.chakra) &&
+          (v.key !== 'palm' || frameworks.palm) &&
+          (v.key !== 'mudras' || frameworks.mudra),
+      ),
+    [frameworks.chakra, frameworks.palm, frameworks.mudra],
+  );
+  const activeView = VIEWS.some((v) => v.key === view) ? view : VIEWS[0]?.key;
 
   const contentWidth = Math.min(width - 32, 360);
 
@@ -77,31 +92,45 @@ export default function BodyScreen() {
           </View>
         </View>
 
-        <View className="border-line mt-4 flex-row rounded-full border p-1">
-          {VIEWS.map((v) => {
-            const on = view === v.key;
-            return (
-              <Pressable
-                key={v.key}
-                onPress={() => setView(v.key)}
-                className="flex-1 items-center rounded-full py-2"
-                style={{ backgroundColor: on ? `${SURFACE_ACCENT.body}1f` : 'transparent' }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-              >
-                <Mono style={{ color: on ? SURFACE_ACCENT.body : '#565c72' }}>{v.label}</Mono>
-              </Pressable>
-            );
-          })}
-        </View>
+        {VIEWS.length > 1 ? (
+          <View className="border-line mt-4 flex-row rounded-full border p-1">
+            {VIEWS.map((v) => {
+              const on = activeView === v.key;
+              return (
+                <Pressable
+                  key={v.key}
+                  onPress={() => setView(v.key)}
+                  className="flex-1 items-center rounded-full py-2"
+                  style={{ backgroundColor: on ? `${SURFACE_ACCENT.body}1f` : 'transparent' }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                >
+                  <Mono style={{ color: on ? SURFACE_ACCENT.body : '#565c72' }}>{v.label}</Mono>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
       </View>
 
       <View className="mt-4">
-        {view === 'field' ? <FieldPanel width={contentWidth} /> : null}
-        {view === 'palm' ? (
+        {activeView === 'field' ? <FieldPanel width={contentWidth} /> : null}
+        {activeView === 'palm' ? (
           <PalmPanel width={Math.min(width - 32, 420)} active={isFocused} />
         ) : null}
-        {view === 'mudras' ? <MudraPanel /> : null}
+        {activeView === 'mudras' ? <MudraPanel /> : null}
+        {!activeView ? (
+          <View className="px-4">
+            <Panel className="p-4">
+              <Text className="text-mute" style={{ fontSize: 13, lineHeight: 19 }}>
+                Every Body framework is off. Turn one back on in Settings to see it here.
+              </Text>
+              <Pressable onPress={() => router.push('/settings')} className="mt-3 self-start" accessibilityRole="button">
+                <Mono style={{ color: SURFACE_ACCENT.body }}>OPEN SETTINGS</Mono>
+              </Pressable>
+            </Panel>
+          </View>
+        ) : null}
       </View>
     </ScrollView>
   );

@@ -1,7 +1,7 @@
 import { useCameraPermissions, type CameraType } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { Camera, GitCompareArrows, RefreshCw, ScanLine } from 'lucide-react-native';
+import { Camera, ChevronRight, GitCompareArrows, Hand, RefreshCw, ScanLine } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, View } from 'react-native';
 import {
@@ -331,6 +331,26 @@ export function PalmPanel({ width, active }: { width: number; active: boolean })
           );
         })}
       </ScrollView>
+
+      <Pressable
+        onPress={() => router.push('/mudras')}
+        accessibilityRole="button"
+        accessibilityLabel="Open Mudra Vision, camera hand alignment practice"
+        className="mt-5"
+      >
+        <Panel className="flex-row items-center gap-3 p-3.5">
+          <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: `${ACCENT}1f` }}>
+            <Hand color={ACCENT} size={16} />
+          </View>
+          <View className="flex-1">
+            <Mono style={{ color: ACCENT }}>PALM → MUDRA → PRACTICE</Mono>
+            <Text className="text-mute mt-1" style={{ fontSize: 12, lineHeight: 17 }}>
+              Take a mudra from the palm map into camera alignment practice.
+            </Text>
+          </View>
+          <ChevronRight color="#565c72" size={16} />
+        </Panel>
+      </Pressable>
 
       {compare ? (
         <View className="mt-5">

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronRight, Hand } from 'lucide-react-native';
+import { ChevronRight, Hand, ScanFace } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import { Text } from 'heroui-native';
 
@@ -29,7 +29,31 @@ export function MudraPanel() {
         PALM → POINT → MUDRA → HOLD → JOURNAL → FIELD
       </Text>
 
-      <View className="mt-4 gap-2">
+      <Pressable
+        onPress={() => router.push('/mudras')}
+        accessibilityRole="button"
+        accessibilityLabel="Open Mudra Vision, camera hand alignment"
+        className="mt-4"
+      >
+        <Panel className="flex-row items-center gap-3 border p-3.5" style={{ borderColor: `${ACCENT}55` }}>
+          <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: `${ACCENT}1f` }}>
+            <ScanFace color={ACCENT} size={16} />
+          </View>
+          <View className="flex-1">
+            <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 15, color: '#e9ecf5' }}>
+              Mudra Vision
+            </Text>
+            <Text className="text-mute mt-0.5" style={{ fontSize: 12, lineHeight: 17 }}>
+              Camera alignment, real-time coaching, and a FORM MATCH score for the full mudra
+              library.
+            </Text>
+          </View>
+          <ChevronRight color={ACCENT} size={16} />
+        </Panel>
+      </Pressable>
+
+      <Mono className="mt-5">SIMPLE HOLD PRACTICE</Mono>
+      <View className="mt-2 gap-2">
         {MUDRAS.map((m) => {
           const def = CHAKRA_BY_KEY[m.chakra];
           const holds = mudraSessionsFor(m.chakra, sessions).length;
