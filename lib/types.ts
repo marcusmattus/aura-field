@@ -176,3 +176,60 @@ export interface UserProfile {
   experienceLevel: ExperienceLevel | null;
   primaryIntention: string;
 }
+
+// ---------------------------------------------------------------------------
+// Goals & habits (M9 — Advanced Personal OS)
+// ---------------------------------------------------------------------------
+
+export type GoalStatus = 'active' | 'completed' | 'archived';
+
+export interface Goal {
+  id: string;
+  title: string;
+  /** why this goal matters, in the user's own words */
+  intention: string;
+  chakra?: ChakraKey;
+  status: GoalStatus;
+  createdAt: number;
+  targetDate: number | null;
+  completedAt: number | null;
+}
+
+export type HabitCadence = 'daily' | 'weekly';
+
+export interface Habit {
+  id: string;
+  goalId: string | null;
+  title: string;
+  cadence: HabitCadence;
+  createdAt: number;
+  archivedAt: number | null;
+}
+
+/** One voluntary completion of a habit. */
+export interface HabitEvent {
+  id: string;
+  habitId: string;
+  completedAt: number;
+}
+
+export type ReviewPeriod = 'weekly' | 'monthly';
+
+/** Deterministic stats a review is built from — see lib/agents/review.ts. */
+export interface ReviewStats {
+  period: ReviewPeriod;
+  windowStart: number;
+  windowEnd: number;
+  journalEntryCount: number;
+  fieldIndexStart: number;
+  fieldIndexEnd: number;
+  topRisingChakra: ChakraKey | null;
+  topFallingChakra: ChakraKey | null;
+  virtueReflectionCount: number;
+  virtuePracticeCount: number;
+  mudraSessionCount: number;
+  habitsCompleted: number;
+  habitsScheduled: number;
+  activeGoalCount: number;
+  completedGoalCount: number;
+}

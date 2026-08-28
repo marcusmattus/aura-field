@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { Check, ChevronRight, Compass, LogOut, Settings, Sparkles } from 'lucide-react-native';
+import { Check, ChevronRight, Compass, LogOut, Settings, Sparkles, Target } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Alert, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
@@ -144,8 +144,42 @@ export default function YouScreen() {
         </Panel>
       </View>
 
-      {frameworks.virtue ? (
-        <View className="mt-5 px-4">
+      <View className="mt-5 px-4 gap-2.5">
+        <Pressable onPress={() => router.push('/goals')} accessibilityRole="button">
+          <Panel className="flex-row items-center gap-3 p-4">
+            <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: '#3ddc9722' }}>
+              <Target color="#3ddc97" size={16} />
+            </View>
+            <View className="flex-1">
+              <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 14, color: '#e9ecf5' }}>
+                Goals & habits
+              </Text>
+              <Text className="text-faint mt-0.5" style={{ fontSize: 11 }}>
+                Voluntary practice, tracked without judgment
+              </Text>
+            </View>
+            <ChevronRight color="#565c72" size={16} />
+          </Panel>
+        </Pressable>
+
+        <Pressable onPress={() => router.push('/reviews')} accessibilityRole="button">
+          <Panel className="flex-row items-center gap-3 p-4">
+            <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: '#a56bff22' }}>
+              <Sparkles color="#a56bff" size={16} />
+            </View>
+            <View className="flex-1">
+              <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 14, color: '#e9ecf5' }}>
+                Personal growth reports
+              </Text>
+              <Text className="text-faint mt-0.5" style={{ fontSize: 11 }}>
+                Weekly & monthly reviews of your field
+              </Text>
+            </View>
+            <ChevronRight color="#565c72" size={16} />
+          </Panel>
+        </Pressable>
+
+        {frameworks.virtue ? (
           <Pressable onPress={() => router.push('/virtues')} accessibilityRole="button">
             <Panel className="flex-row items-center gap-3 p-4">
               <View className="h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: '#c9a75c22' }}>
@@ -162,8 +196,8 @@ export default function YouScreen() {
               <ChevronRight color="#565c72" size={16} />
             </Panel>
           </Pressable>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
 
       {profile?.focusAreas && profile.focusAreas.length > 0 ? (
         <View className="mt-5 px-4">
