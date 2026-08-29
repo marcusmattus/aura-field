@@ -1,5 +1,5 @@
 {
-  "name": "bilt-starter",
+  "name": "chakraos",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
@@ -62,6 +62,7 @@
     "expo-system-ui": "~6.0.9",
     "expo-updates": "~29.0.19",
     "expo-web-browser": "~15.0.11",
+    "firebase": "^12.2.1",
     "heroui-native": "^1.0.3",
     "lucide-react-native": "^0.562.0",
     "pigeon-maps": "^0.22.1",
@@ -76,6 +77,7 @@
     "react-native-markdown-display": "^7.0.2",
     "react-native-mmkv": "^4.3.2",
     "react-native-nitro-modules": "^0.36.5",
+    "react-native-purchases": "^9.5.3",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
