@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowRight, ChevronLeft } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { ArrowRight } from 'lucide-react-native';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,23 +15,15 @@ import {
 import { Text } from 'heroui-native';
 
 import { Display, Logo, Mono, SoftFade } from '@/components/ui';
+import { authProvider, signInEmail, signInWithOAuth, signUpEmail } from '@/lib/auth';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
-import {
-  sendLoginCode,
-  sendMagicLink,
-  signInWithOAuth,
-  signInWithPassword,
-  signUpWithEmail,
-  verifyEmailOtp,
-} from '@/lib/supabase';
 
 const ACCENT = SURFACE_ACCENT.you;
 const INK = '#e9ecf5';
 const MUTE = '#8a90a6';
 
 type Mode = 'signup' | 'signin';
-type Step = 'credentials' | 'verify' | 'magic-sent';
 
 function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -40,21 +32,16 @@ function isEmail(v: string): boolean {
 export default function AuthScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const onAuthenticated = useChakraStore((s) => s.onAuthenticated);
-
   const [mode, setMode] = useState<Mode>('signup');
-  const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const codeRef = useRef<TextInput>(null);
-
   const sigilSize = Math.min(width - 200, 120);
 
   const advanceToApp = async () => {
-    await onAuthenticated();
+    // Firebase can own auth while Supabase continues as the data backend.
+    useChakraStore.setState({ authenticated: true });
     const { profileComplete } = useChakraStore.getState();
     router.replace(profileComplete ? '/paywall' : '/profile-setup');
   };
@@ -69,96 +56,34 @@ export default function AuthScreen() {
       setError('Password must be at least 6 characters.');
       return;
     }
-    setBusy(true);
-    if (mode === 'signup') {
-      const res = await signUpWithEmail(email.trim(), password);
-      setBusy(false);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      setStep('verify');
-      setTimeout(() => codeRef.current?.focus(), 350);
-    } else {
-      // Returning member: try password first; fall back to an email code.
-      const res = await signInWithPassword(email.trim(), password);
-      if (res.ok) {
-        setBusy(false);
-        await advanceToApp();
-        return;
-      }
-      setBusy(false);
-      setError(res.error);
-    }
-  };
 
-  const sendCode = async () => {
-    setError(null);
-    if (!isEmail(email)) {
-      setError('Enter a valid email address.');
-      return;
-    }
     setBusy(true);
-    const res = await sendLoginCode(email.trim());
+    const result =
+      mode === 'signup'
+        ? await signUpEmail(email.trim(), password)
+        : await signInEmail(email.trim(), password);
     setBusy(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    setStep('verify');
-    setTimeout(() => codeRef.current?.focus(), 350);
-  };
 
-  const verify = async () => {
-    setError(null);
-    if (code.length !== 6) {
-      setError('Enter the 6-digit code from your email.');
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
-    setBusy(true);
-    const type = mode === 'signup' ? 'signup' : 'email';
-    const res = await verifyEmailOtp(email.trim(), code, type);
-    setBusy(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
+
+    if (mode === 'signup' && authProvider === 'firebase') {
+      setError('Account created. Check your inbox to verify your email.');
     }
     await advanceToApp();
   };
 
   const switchMode = () => {
     setMode((m) => (m === 'signup' ? 'signin' : 'signup'));
-    setStep('credentials');
     setError(null);
-    setCode('');
     setPassword('');
   };
 
   return (
     <View className="bg-field flex-1">
-      {/* eslint-disable-next-line react/style-prop-object -- expo-status-bar `style` is a string enum */}
       <StatusBar style="light" />
-
-      <View className="pt-safe-offset-3 flex-row items-center justify-between px-5">
-        {step === 'verify' || step === 'magic-sent' ? (
-          <Pressable
-            hitSlop={12}
-            onPress={() => {
-              setStep('credentials');
-              setError(null);
-            }}
-            className="flex-row items-center gap-1"
-          >
-            <ChevronLeft color={MUTE} size={16} />
-            <Mono>BACK</Mono>
-          </Pressable>
-        ) : (
-          <View />
-        )}
-        <Pressable hitSlop={12} onPress={() => router.replace('/paywall')}>
-          <Mono>SKIP</Mono>
-        </Pressable>
-      </View>
 
       <KeyboardAvoidingView
         className="flex-1"
@@ -170,205 +95,95 @@ export default function AuthScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="items-center pt-2">
+          <View className="items-center pt-safe-offset-6">
             <SoftFade>
               <Logo width={sigilSize} />
             </SoftFade>
           </View>
 
-          {step === 'credentials' ? (
-            <View className="mt-2">
-              <Mono style={{ color: ACCENT }}>
-                {mode === 'signup' ? 'CHAKRAOS · CREATE ACCOUNT' : 'CHAKRAOS · WELCOME BACK'}
-              </Mono>
-              <Display size={30} className="mt-2">
-                {mode === 'signup' ? 'Begin your field' : 'Return to your field'}
-              </Display>
-              <Text className="text-mute mt-3" style={{ fontSize: 15, lineHeight: 23 }}>
+          <View className="mt-6">
+            <Mono style={{ color: ACCENT }}>
+              {mode === 'signup' ? 'CHAKRAOS · CREATE ACCOUNT' : 'CHAKRAOS · WELCOME BACK'}
+            </Mono>
+            <Display size={30} className="mt-2">
+              {mode === 'signup' ? 'Begin your field' : 'Return to your field'}
+            </Display>
+            <Text className="text-mute mt-3" style={{ fontSize: 15, lineHeight: 23 }}>
+              {mode === 'signup'
+                ? 'Create your private ChakraOS account with email and password.'
+                : 'Sign in to continue your journal, field and practice history.'}
+            </Text>
+            <Mono className="mt-3" style={{ color: MUTE }}>
+              AUTH · {authProvider.toUpperCase()}
+            </Mono>
+
+            <View className="mt-6 gap-3">
+              <Field
+                label="EMAIL"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                textContentType="emailAddress"
+              />
+              <Field
+                label="PASSWORD"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="At least 6 characters"
+                secureTextEntry
+                autoComplete="password"
+                textContentType="password"
+              />
+            </View>
+
+            {error ? <ErrorText>{error}</ErrorText> : null}
+
+            <PrimaryButton busy={busy} onPress={submitCredentials}>
+              {mode === 'signup' ? 'CREATE ACCOUNT' : 'SIGN IN'}
+            </PrimaryButton>
+
+            <View className="mt-6 flex-row gap-3">
+              <Pressable
+                className="border-line bg-panel flex-1 items-center rounded-full border py-3"
+                disabled={busy}
+                onPress={async () => {
+                  setBusy(true);
+                  setError(null);
+                  const res = await signInWithOAuth('apple');
+                  setBusy(false);
+                  if (!res.ok) return setError(res.error);
+                  await advanceToApp();
+                }}
+              >
+                <Mono>APPLE</Mono>
+              </Pressable>
+              <Pressable
+                className="border-line bg-panel flex-1 items-center rounded-full border py-3"
+                disabled={busy}
+                onPress={async () => {
+                  setBusy(true);
+                  setError(null);
+                  const res = await signInWithOAuth('google');
+                  setBusy(false);
+                  if (!res.ok) return setError(res.error);
+                  await advanceToApp();
+                }}
+              >
+                <Mono>GOOGLE</Mono>
+              </Pressable>
+            </View>
+
+            <Pressable className="mt-6 items-center" hitSlop={8} onPress={switchMode}>
+              <Text className="text-mute" style={{ fontSize: 13 }}>
                 {mode === 'signup'
-                  ? 'Your account holds your profile and intention. We email a 6-digit code to verify it.'
-                  : 'Sign in to pick up where you left off across this device.'}
+                  ? 'Already have an account? Sign in'
+                  : 'New here? Create an account'}
               </Text>
-
-              <View className="mt-6 gap-3">
-                <Field
-                  label="EMAIL"
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                />
-                <Field
-                  label="PASSWORD"
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="At least 6 characters"
-                  secureTextEntry
-                  autoComplete="password"
-                  textContentType="password"
-                />
-              </View>
-
-              {error ? <ErrorText>{error}</ErrorText> : null}
-
-              <PrimaryButton busy={busy} onPress={submitCredentials}>
-                {mode === 'signup' ? 'SEND VERIFICATION CODE' : 'SIGN IN'}
-              </PrimaryButton>
-
-              {mode === 'signin' ? (
-                <Pressable className="mt-4 items-center" hitSlop={8} onPress={sendCode}>
-                  <Mono style={{ color: ACCENT }}>EMAIL ME A LOGIN CODE INSTEAD</Mono>
-                </Pressable>
-              ) : null}
-
-              <Pressable
-                className="mt-3 items-center"
-                hitSlop={8}
-                onPress={async () => {
-                  setError(null);
-                  if (!isEmail(email)) {
-                    setError('Enter a valid email for the magic link.');
-                    return;
-                  }
-                  setBusy(true);
-                  const res = await sendMagicLink(email.trim());
-                  setBusy(false);
-                  if (!res.ok) {
-                    setError(res.error);
-                    return;
-                  }
-                  setError(null);
-                  setStep('magic-sent');
-                }}
-              >
-                <Mono style={{ color: MUTE }}>SEND MAGIC LINK</Mono>
-              </Pressable>
-
-              <View className="mt-6 flex-row gap-3">
-                <Pressable
-                  className="border-line bg-panel flex-1 items-center rounded-full border py-3"
-                  disabled={busy}
-                  onPress={async () => {
-                    setBusy(true);
-                    setError(null);
-                    const res = await signInWithOAuth('apple');
-                    setBusy(false);
-                    if (!res.ok) {
-                      setError(res.error);
-                      return;
-                    }
-                    await advanceToApp();
-                  }}
-                >
-                  <Mono>APPLE</Mono>
-                </Pressable>
-                <Pressable
-                  className="border-line bg-panel flex-1 items-center rounded-full border py-3"
-                  disabled={busy}
-                  onPress={async () => {
-                    setBusy(true);
-                    setError(null);
-                    const res = await signInWithOAuth('google');
-                    setBusy(false);
-                    if (!res.ok) {
-                      setError(res.error);
-                      return;
-                    }
-                    await advanceToApp();
-                  }}
-                >
-                  <Mono>GOOGLE</Mono>
-                </Pressable>
-              </View>
-
-              <Pressable className="mt-6 items-center" hitSlop={8} onPress={switchMode}>
-                <Text className="text-mute" style={{ fontSize: 13 }}>
-                  {mode === 'signup'
-                    ? 'Already have an account? Sign in'
-                    : 'New here? Create an account'}
-                </Text>
-              </Pressable>
-            </View>
-          ) : step === 'magic-sent' ? (
-            <View className="mt-2">
-              <Mono style={{ color: ACCENT }}>CHAKRAOS · MAGIC LINK</Mono>
-              <Display size={30} className="mt-2">
-                Check your email
-              </Display>
-              <Text className="text-mute mt-3" style={{ fontSize: 15, lineHeight: 23 }}>
-                We sent a sign-in link to{' '}
-                <Text className="text-ink" style={{ fontSize: 15 }}>
-                  {email.trim()}
-                </Text>
-                . Open it on this device to continue — no code needed.
-              </Text>
-              <Pressable
-                className="mt-6 items-center"
-                hitSlop={8}
-                onPress={async () => {
-                  setBusy(true);
-                  setError(null);
-                  const res = await sendMagicLink(email.trim());
-                  setBusy(false);
-                  if (!res.ok) setError(res.error);
-                }}
-              >
-                <Mono style={{ color: ACCENT }}>{busy ? 'SENDING…' : 'RESEND MAGIC LINK'}</Mono>
-              </Pressable>
-              {error ? <ErrorText>{error}</ErrorText> : null}
-            </View>
-          ) : (
-            <View className="mt-2">
-              <Mono style={{ color: ACCENT }}>CHAKRAOS · VERIFY</Mono>
-              <Display size={30} className="mt-2">
-                Enter your code
-              </Display>
-              <Text className="text-mute mt-3" style={{ fontSize: 15, lineHeight: 23 }}>
-                We sent a 6-digit code to{' '}
-                <Text className="text-ink" style={{ fontSize: 15 }}>
-                  {email.trim()}
-                </Text>
-                . Enter it below to continue.
-              </Text>
-
-              <View className="mt-6">
-                <Mono className="mb-2">6-DIGIT CODE</Mono>
-                <TextInput
-                  ref={codeRef}
-                  value={code}
-                  onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="······"
-                  placeholderTextColor="#3a4255"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  textContentType="oneTimeCode"
-                  className="bg-panel border-line text-ink rounded-2xl border px-4 py-4 text-center"
-                  style={{
-                    fontFamily: 'JetBrainsMono_500Medium',
-                    fontSize: 28,
-                    letterSpacing: 12,
-                  }}
-                />
-              </View>
-
-              {error ? <ErrorText>{error}</ErrorText> : null}
-
-              <PrimaryButton busy={busy} onPress={verify}>
-                VERIFY &amp; CONTINUE
-              </PrimaryButton>
-
-              <Pressable
-                className="mt-4 items-center"
-                hitSlop={8}
-                onPress={mode === 'signup' ? submitCredentials : sendCode}
-              >
-                <Mono style={{ color: ACCENT }}>RESEND CODE</Mono>
-              </Pressable>
-            </View>
-          )}
+            </Pressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -391,24 +206,13 @@ function Field({ label, ...rest }: { label: string } & React.ComponentProps<type
 
 function ErrorText({ children }: { children: string }) {
   return (
-    <Text
-      className="mt-4"
-      style={{ color: '#ff6b6b', fontSize: 13, fontFamily: 'Inter_400Regular' }}
-    >
+    <Text className="mt-4" style={{ color: '#ff6b6b', fontSize: 13, fontFamily: 'Inter_400Regular' }}>
       {children}
     </Text>
   );
 }
 
-function PrimaryButton({
-  children,
-  busy,
-  onPress,
-}: {
-  children: React.ReactNode;
-  busy: boolean;
-  onPress: () => void;
-}) {
+function PrimaryButton({ children, busy, onPress }: { children: React.ReactNode; busy: boolean; onPress: () => void }) {
   return (
     <Pressable
       disabled={busy}
