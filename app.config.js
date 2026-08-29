@@ -28,7 +28,7 @@ module.exports = ({ config }) => {
 
   const expoConfig = {
     ...config,
-    name: config.name ?? 'Aura Field',
+    name: config.name ?? 'ChakraOS',
     // Must match Expo project @chakraos/chakraos
     slug: 'chakraos',
     owner: OWNER ?? config.owner ?? 'chakraos',

@@ -1,4 +1,4 @@
-# ChakraOS (Aura Field)
+# ChakraOS
 
 AI-powered consciousness OS for reflection, daily alignment, journaling, frequency sessions, and emotionally intelligent coaching.
 

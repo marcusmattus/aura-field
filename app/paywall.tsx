@@ -21,7 +21,7 @@ const BENEFITS = [
   'Unlimited Coach conversations grounded in your own field data',
   'The full Solfeggio sound library — all nine tuned sessions',
   'Voice journaling with on-device theme analysis',
-  'Aura sigil, breakthroughs & long-term field trends',
+  'ChakraOS sigil, breakthroughs & long-term field trends',
 ];
 
 export default function PaywallScreen() {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start Aura Field for Expo Go over an ngrok tunnel.
+# Start ChakraOS for Expo Go over an ngrok tunnel.
 # Usage: npm run start:go:tunnel
 set -euo pipefail
 
