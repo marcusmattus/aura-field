@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Aura Field",
+    "name": "ChakraOS",
     "slug": "chakraos",
     "owner": "chakraos",
     "newArchEnabled": true,
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "scheme": "aura-field",
+    "scheme": "chakraos",
     "icon": "./assets/icon.png",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -19,10 +19,10 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "supportsTablet": true,
-      "bundleIdentifier": "com.aurafield.app"
+      "bundleIdentifier": "com.chakraos.app"
     },
     "android": {
-      "package": "com.aurafield.app",
+      "package": "com.chakraos.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#05060A"
@@ -60,13 +60,13 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow chakraOS to record voice journal entries on this device."
+          "microphonePermission": "Allow ChakraOS to record voice journal entries on this device."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow chakraOS to use the camera so Palm Field and Mudra practice can show your hand on screen.",
+          "cameraPermission": "Allow ChakraOS to use the camera so Palm Field and Mudra practice can show your hand on screen.",
           "recordAudioAndroid": false
         }
       ]
