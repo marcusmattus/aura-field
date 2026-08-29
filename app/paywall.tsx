@@ -1,12 +1,14 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Check, X } from 'lucide-react-native';
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Check, RotateCcw, X } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from 'heroui-native';
 
 import { AuraSigil } from '@/components/AuraSigil';
 import { Display, Mono, Panel } from '@/components/ui';
 import { CHAKRA_ORDER, SURFACE_ACCENT } from '@/lib/chakras';
+import { purchaseAnnual, restorePurchases } from '@/lib/purchases';
 import { useChakraStore } from '@/lib/store';
 
 const ACCENT = SURFACE_ACCENT.sound;
@@ -27,24 +29,43 @@ const BENEFITS = [
 export default function PaywallScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const subscribe = useChakraStore((s) => s.subscribe);
   const subscribed = useChakraStore((s) => s.subscribed);
+  const setSubscribed = useChakraStore((s) => s.subscribe);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const sigilSize = Math.min(width - 160, 180);
 
-  const enter = () => {
-    router.replace('/(tabs)');
+  const enter = () => router.replace('/(tabs)');
+
+  const onSubscribe = async () => {
+    setError(null);
+    setBusy(true);
+    const result = await purchaseAnnual();
+    setBusy(false);
+    if (!result.ok || !result.active) {
+      setError(result.error ?? 'Subscription could not be activated.');
+      return;
+    }
+    setSubscribed();
+    enter();
   };
 
-  const onSubscribe = () => {
-    // NOTE: mock unlock — payments are not enabled. Replace with real IAP once on.
-    subscribe();
-    router.replace('/(tabs)');
+  const onRestore = async () => {
+    setError(null);
+    setBusy(true);
+    const result = await restorePurchases();
+    setBusy(false);
+    if (!result.ok || !result.active) {
+      setError(result.error ?? 'No active subscription was found.');
+      return;
+    }
+    setSubscribed();
+    enter();
   };
 
   return (
     <View className="bg-field flex-1">
-      {/* eslint-disable-next-line react/style-prop-object -- expo-status-bar `style` is a string enum, not a CSS object */}
       <StatusBar style="light" />
 
       <View className="pt-safe-offset-3 flex-row justify-end px-5">
@@ -97,39 +118,55 @@ export default function PaywallScreen() {
               <View>
                 <Mono style={{ color: ACCENT }}>ANNUAL MEMBERSHIP</Mono>
                 <View className="mt-1.5 flex-row items-baseline gap-1">
-                  <Display size={34}>$30</Display>
-                  <Text className="text-mute font-mono" style={{ fontSize: 13 }}>
-                    / year
-                  </Text>
+                  <Display size={34}>£29.99</Display>
+                  <Text className="text-mute font-mono" style={{ fontSize: 13 }}>/ year</Text>
                 </View>
               </View>
               <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: `${ACCENT}22` }}>
                 <Text className="font-mono-bold" style={{ fontSize: 10, color: ACCENT }}>
-                  ~$2.50 / MO
+                  ~£2.50 / MO
                 </Text>
               </View>
             </View>
             <Text className="text-mute mt-3 font-mono" style={{ fontSize: 11, lineHeight: 17 }}>
-              Auto-renews yearly. Cancel anytime in Settings — you keep access until the term ends.
+              Auto-renews yearly. Cancel anytime in your App Store or Google Play subscription settings.
             </Text>
           </Panel>
         </View>
+
+        {error ? (
+          <Text className="mt-4 px-6" style={{ color: '#ff6b6b', fontSize: 13 }}>
+            {error}
+          </Text>
+        ) : null}
       </ScrollView>
 
       <View className="pb-safe-offset-5 px-6 pt-3">
         <Pressable
+          disabled={busy}
           className="items-center justify-center rounded-full py-4"
-          style={{ backgroundColor: ACCENT }}
+          style={{ backgroundColor: ACCENT, opacity: busy ? 0.65 : 1 }}
           onPress={subscribed ? enter : onSubscribe}
         >
-          <Text className="font-mono-bold" style={{ fontSize: 13, color: '#0a0e18' }}>
-            {subscribed ? 'ENTER CHAKRAOS' : 'START MEMBERSHIP · $30/YR'}
-          </Text>
+          {busy ? (
+            <ActivityIndicator color="#0a0e18" />
+          ) : (
+            <Text className="font-mono-bold" style={{ fontSize: 13, color: '#0a0e18' }}>
+              {subscribed ? 'ENTER CHAKRAOS' : 'START MEMBERSHIP · £29.99/YR'}
+            </Text>
+          )}
         </Pressable>
-        <Text
-          className="text-faint mt-3 text-center font-mono"
-          style={{ fontSize: 10, lineHeight: 15 }}
-        >
+        {!subscribed ? (
+          <Pressable
+            disabled={busy}
+            className="mt-3 flex-row items-center justify-center gap-2 py-2"
+            onPress={onRestore}
+          >
+            <RotateCcw color="#8a90a6" size={13} />
+            <Mono>RESTORE PURCHASES</Mono>
+          </Pressable>
+        ) : null}
+        <Text className="text-faint mt-2 text-center font-mono" style={{ fontSize: 10, lineHeight: 15 }}>
           Recurring billing. Cancel anytime. Terms apply.
         </Text>
       </View>
