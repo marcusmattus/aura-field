@@ -28,23 +28,24 @@ module.exports = ({ config }) => {
 
   const expoConfig = {
     ...config,
-    name: config.name ?? 'Aura Field',
-    // Must match Expo project @chakraos/chakraos
+    name: 'ChakraOS',
     slug: 'chakraos',
     owner: OWNER ?? config.owner ?? 'chakraos',
-    version: process.env.BILT_APP_VERSION ?? config.version ?? '1.0.0',
+    scheme: 'chakraos',
+    version: process.env.CHAKRAOS_APP_VERSION ?? config.version ?? '1.0.0',
     ios: {
       ...config.ios,
       bundleIdentifier:
-        process.env.BILT_IOS_BUNDLE_ID ?? config.ios?.bundleIdentifier ?? 'com.aurafield.app',
+        process.env.CHAKRAOS_IOS_BUNDLE_ID ?? config.ios?.bundleIdentifier ?? 'com.chakraos.app',
     },
     android: {
       ...config.android,
-      package: process.env.BILT_ANDROID_PACKAGE ?? config.android?.package ?? 'com.aurafield.app',
+      package:
+        process.env.CHAKRAOS_ANDROID_PACKAGE ?? config.android?.package ?? 'com.chakraos.app',
     },
     extra: {
       ...config.extra,
-      appStoreAppId: process.env.BILT_APP_STORE_APP_ID ?? config.extra?.appStoreAppId,
+      appStoreAppId: process.env.CHAKRAOS_APP_STORE_APP_ID ?? config.extra?.appStoreAppId,
       eas: {
         ...existingEas,
         ...(projectId ? { projectId } : {}),
