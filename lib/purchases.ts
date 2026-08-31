@@ -1,5 +1,9 @@
 import { Platform } from 'react-native';
-import Purchases, { LOG_LEVEL, type CustomerInfo, type PurchasesPackage } from 'react-native-purchases';
+import Purchases, {
+  LOG_LEVEL,
+  type CustomerInfo,
+  type PurchasesPackage,
+} from 'react-native-purchases';
 
 const ENTITLEMENT_ID = process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID ?? 'pro';
 const IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -19,7 +23,7 @@ export function hasPurchases(): boolean {
 
 export async function configurePurchases(appUserID?: string): Promise<void> {
   if (configured || !hasPurchases()) return;
-  if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+  if (__DEV__) await Purchases.setLogLevel(LOG_LEVEL.DEBUG);
   Purchases.configure({ apiKey: apiKey()!, appUserID });
   configured = true;
 }
@@ -52,7 +56,10 @@ export async function purchaseAnnual(): Promise<{
     return { ok: true, active: hasProEntitlement(customerInfo) };
   } catch (error) {
     const cancelled = Boolean(
-      error && typeof error === 'object' && 'userCancelled' in error && (error as { userCancelled?: boolean }).userCancelled,
+      error &&
+      typeof error === 'object' &&
+      'userCancelled' in error &&
+      (error as { userCancelled?: boolean }).userCancelled,
     );
     return {
       ok: false,

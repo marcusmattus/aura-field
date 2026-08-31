@@ -15,7 +15,13 @@ import {
 import { Text } from 'heroui-native';
 
 import { Display, Logo, Mono, SoftFade } from '@/components/ui';
-import { authProvider, signInEmail, signInWithOAuth, signUpEmail } from '@/lib/auth';
+import {
+  authProvider,
+  sendPasswordReset,
+  signInEmail,
+  signInWithOAuth,
+  signUpEmail,
+} from '@/lib/auth';
 import { SURFACE_ACCENT } from '@/lib/chakras';
 import { useChakraStore } from '@/lib/store';
 
@@ -37,6 +43,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const sigilSize = Math.min(width - 200, 120);
 
   const advanceToApp = async () => {
@@ -48,6 +55,7 @@ export default function AuthScreen() {
 
   const submitCredentials = async () => {
     setError(null);
+    setNotice(null);
     if (!isEmail(email)) {
       setError('Enter a valid email address.');
       return;
@@ -70,14 +78,34 @@ export default function AuthScreen() {
     }
 
     if (mode === 'signup' && authProvider === 'firebase') {
-      setError('Account created. Check your inbox to verify your email.');
+      setNotice('Account created. Check your inbox to verify your email.');
     }
     await advanceToApp();
+  };
+
+  const requestPasswordReset = async () => {
+    setError(null);
+    setNotice(null);
+    if (!isEmail(email)) {
+      setError('Enter your email address first, then tap Forgot password.');
+      return;
+    }
+
+    setBusy(true);
+    const result = await sendPasswordReset(email.trim());
+    setBusy(false);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setNotice('If that email has an account, a reset link is on its way.');
   };
 
   const switchMode = () => {
     setMode((m) => (m === 'signup' ? 'signin' : 'signup'));
     setError(null);
+    setNotice(null);
     setPassword('');
   };
 
@@ -95,7 +123,7 @@ export default function AuthScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="items-center pt-safe-offset-6">
+          <View className="pt-safe-offset-6 items-center">
             <SoftFade>
               <Logo width={sigilSize} />
             </SoftFade>
@@ -140,10 +168,24 @@ export default function AuthScreen() {
             </View>
 
             {error ? <ErrorText>{error}</ErrorText> : null}
+            {notice ? <NoticeText>{notice}</NoticeText> : null}
 
             <PrimaryButton busy={busy} onPress={submitCredentials}>
               {mode === 'signup' ? 'CREATE ACCOUNT' : 'SIGN IN'}
             </PrimaryButton>
+
+            {mode === 'signin' ? (
+              <Pressable
+                className="mt-4 items-center"
+                disabled={busy}
+                hitSlop={8}
+                onPress={requestPasswordReset}
+              >
+                <Text className="text-mute" style={{ fontSize: 13 }}>
+                  Forgot password?
+                </Text>
+              </Pressable>
+            ) : null}
 
             <View className="mt-6 flex-row gap-3">
               <Pressable
@@ -206,13 +248,32 @@ function Field({ label, ...rest }: { label: string } & React.ComponentProps<type
 
 function ErrorText({ children }: { children: string }) {
   return (
-    <Text className="mt-4" style={{ color: '#ff6b6b', fontSize: 13, fontFamily: 'Inter_400Regular' }}>
+    <Text
+      className="mt-4"
+      style={{ color: '#ff6b6b', fontSize: 13, fontFamily: 'Inter_400Regular' }}
+    >
       {children}
     </Text>
   );
 }
 
-function PrimaryButton({ children, busy, onPress }: { children: React.ReactNode; busy: boolean; onPress: () => void }) {
+function NoticeText({ children }: { children: string }) {
+  return (
+    <Text className="mt-4" style={{ color: ACCENT, fontSize: 13, fontFamily: 'Inter_400Regular' }}>
+      {children}
+    </Text>
+  );
+}
+
+function PrimaryButton({
+  children,
+  busy,
+  onPress,
+}: {
+  children: React.ReactNode;
+  busy: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       disabled={busy}
