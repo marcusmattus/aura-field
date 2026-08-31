@@ -61,6 +61,8 @@ jobs:
         env:
           BILT_APP_STORE_APP_ID: ${{ secrets.BILT_APP_STORE_APP_ID }}
           BILT_APPLE_TEAM_ID: ${{ secrets.BILT_APPLE_TEAM_ID }}
+          CHAKRAOS_APP_STORE_APP_ID: ${{ secrets.CHAKRAOS_APP_STORE_APP_ID }}
+          CHAKRAOS_APPLE_TEAM_ID: ${{ secrets.CHAKRAOS_APPLE_TEAM_ID }}
           EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
         run: npm run eas:sync-submit
 
@@ -73,6 +75,8 @@ jobs:
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           BILT_APP_STORE_APP_ID: ${{ secrets.BILT_APP_STORE_APP_ID }}
           BILT_APPLE_TEAM_ID: ${{ secrets.BILT_APPLE_TEAM_ID }}
+          CHAKRAOS_APP_STORE_APP_ID: ${{ secrets.CHAKRAOS_APP_STORE_APP_ID }}
+          CHAKRAOS_APPLE_TEAM_ID: ${{ secrets.CHAKRAOS_APPLE_TEAM_ID }}
           EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
         run: |
           ARGS=(--profile "${{ inputs.profile }}" --platform "${{ inputs.platform }}" --non-interactive)
